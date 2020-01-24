@@ -33,7 +33,7 @@ class TilstandsendringsRiver() : River() {
                 .asLocalDateTime()
                 .atZone(timezone)
 
-        sensu.report(dataPointFactory.createDataPoint("datakvalitet.event", mapOf(
+        sensu.report(dataPointFactory.createDataPoint("vedtaksperiode_endret.event", mapOf(
                 "endringstidspunkt" to "$endringstidspunkt"
         ), mapOf(
                 "vedtaksperiodeId" to packet["vedtaksperiodeId"].asText(),
