@@ -42,7 +42,7 @@ class Rapid(config: Properties,
             }
         } catch (err: WakeupException) {
             // Ignore exception if closing
-            if (!running.get()) throw err
+            if (running.get()) throw err
         }
     }
 
