@@ -1,4 +1,4 @@
-package no.nav.helse.spetakkel.nais
+package no.nav.helse.rapids_rivers
 
 import io.ktor.application.Application
 import io.ktor.application.call

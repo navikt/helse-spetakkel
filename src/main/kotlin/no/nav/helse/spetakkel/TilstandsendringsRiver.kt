@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode
 import no.nav.helse.spetakkel.metrikker.InfluxDBDataPointFactory
 import no.nav.helse.spetakkel.metrikker.SensuMetricReporter
 import org.slf4j.LoggerFactory
+import no.nav.helse.rapids_rivers.Rapid
+import no.nav.helse.rapids_rivers.River
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -28,7 +30,7 @@ class TilstandsendringsRiver() : River() {
         validate { it.hasNonNull("endringstidspunkt") }
     }
 
-    override fun onPacket(packet: JsonNode) {
+    override fun onPacket(packet: JsonNode, context: Rapid.MessageContext) {
         val endringstidspunkt = packet["endringstidspunkt"]
                 .asLocalDateTime()
                 .atZone(timezone)

@@ -1,7 +1,8 @@
-package no.nav.helse.spetakkel
+package no.nav.helse.rapids_rivers
 
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.config.SslConfigs
 import org.slf4j.LoggerFactory
@@ -10,7 +11,7 @@ import java.util.*
 
 // Understands how to configure kafka from environment variables
 internal class KafkaConfigBuilder(private val bootstrapServers: String,
-                                  private val consumerGroupId: String = "spetakkel-v1",
+                                  private val consumerGroupId: String,
                                   private val username: String? = null,
                                   private val password: String? = null,
                                   private val truststore: String? = null,
@@ -22,6 +23,10 @@ internal class KafkaConfigBuilder(private val bootstrapServers: String,
         put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
         put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
         put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000")
+    }
+
+    fun producerConfig() = kafkaBaseConfig().apply {
+        put(ProducerConfig.LINGER_MS_CONFIG, "0")
     }
 
     private fun kafkaBaseConfig() = Properties().apply {

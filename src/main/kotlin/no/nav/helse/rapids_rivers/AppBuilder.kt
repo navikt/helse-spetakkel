@@ -1,11 +1,10 @@
-package no.nav.helse.spetakkel
+package no.nav.helse.rapids_rivers
 
 import io.ktor.server.engine.ApplicationEngine
 import io.ktor.server.engine.applicationEngineEnvironment
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import no.nav.helse.spetakkel.nais.nais
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileNotFoundException
@@ -16,21 +15,28 @@ class AppBuilder(private val env: Map<String, String>) {
 
     private val kafkaConfig = KafkaConfigBuilder(
             bootstrapServers = env.getValue("KAFKA_BOOTSTRAP_SERVERS"),
+            consumerGroupId = env.getValue("KAFKA_CONSUMER_GROUP_ID"),
             username = "/var/run/secrets/nais.io/service_user/username".readFile(),
             password = "/var/run/secrets/nais.io/service_user/password".readFile(),
             truststore = env.getValue("NAV_TRUSTSTORE_PATH"),
             truststorePassword = env.getValue("NAV_TRUSTSTORE_PASSWORD")
     )
 
-    private val rapid = Rapid(kafkaConfig.consumerConfig(), "privat-helse-sykepenger-rapid-v1").apply {
-        register(TilstandsendringsRiver())
-    }
+    private val rapid = Rapid(
+            consumerConfig = kafkaConfig.consumerConfig(),
+            producerConfig = kafkaConfig.producerConfig(),
+            topic = env.getValue("KAFKA_RAPID_TOPIC")
+    )
 
     private val app = createKtorApp(rapid::isRunning, rapid::isRunning)
 
     init {
         Thread.currentThread().setUncaughtExceptionHandler(::uncaughtExceptionHandler)
         Runtime.getRuntime().addShutdownHook(Thread(::stop))
+    }
+
+    fun register(river: River) {
+        rapid.register(river)
     }
 
     fun start() {
