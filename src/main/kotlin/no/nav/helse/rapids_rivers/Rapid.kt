@@ -55,7 +55,7 @@ class Rapid(consumerConfig: Properties,
             while (running.get()) {
                 val records = consumer.poll(Duration.ofSeconds(1))
                 records.forEach { record ->
-                    val context = MessageContext(record, producer)
+                    val context = KafkaMessageContext(record, producer)
                     listeners.forEach { it.onMessage(record.value(), context) }
                 }
             }
@@ -68,13 +68,18 @@ class Rapid(consumerConfig: Properties,
         }
     }
 
-    class MessageContext(private val record: ConsumerRecord<String, String>,
-                         private val producer: Producer<String, String>) {
-        fun send(message: String) {
+    interface MessageContext {
+        fun send(message: String)
+        fun send(key: String, message: String)
+    }
+
+    private class KafkaMessageContext(private val record: ConsumerRecord<String, String>,
+                                      private val producer: Producer<String, String>) : MessageContext {
+        override fun send(message: String) {
             send(record.key(), message)
         }
 
-        fun send(key: String, message: String) {
+        override fun send(key: String, message: String) {
             producer.send(ProducerRecord(record.topic(), key, message))
         }
     }
