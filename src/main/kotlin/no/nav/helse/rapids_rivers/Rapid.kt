@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
+import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -15,6 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 class Rapid(consumerConfig: Properties,
             producerConfig: Properties,
             private val topic: String) {
+
+    private val log = LoggerFactory.getLogger(Rapid::class.java)
 
     private val running = AtomicBoolean(false)
 
@@ -32,19 +35,18 @@ class Rapid(consumerConfig: Properties,
     fun isRunning() = running.get()
 
     fun start() {
+        log.info("starting rapid")
         running.set(true)
         consumer.use { consumeMessages() }
         stop()
     }
 
     fun stop() {
-        if (!running.get()) return
-
+        log.info("stopping rapid")
+        if (!running.get()) return log.info("rappid already stopped")
         running.set(false)
         producer.close()
         consumer.wakeup()
-        consumer.unsubscribe()
-        consumer.close()
     }
 
     private fun consumeMessages() {
@@ -60,6 +62,9 @@ class Rapid(consumerConfig: Properties,
         } catch (err: WakeupException) {
             // Ignore exception if closing
             if (running.get()) throw err
+        } finally {
+            log.info("stopped consuming messages")
+            consumer.unsubscribe()
         }
     }
 

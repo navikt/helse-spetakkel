@@ -26,6 +26,7 @@ internal class KafkaConfigBuilder(private val bootstrapServers: String,
     }
 
     fun producerConfig() = kafkaBaseConfig().apply {
+        put(ProducerConfig.ACKS_CONFIG, "1")
         put(ProducerConfig.LINGER_MS_CONFIG, "0")
     }
 
