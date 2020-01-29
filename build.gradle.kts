@@ -17,7 +17,7 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("no.nav.helse:rapids-rivers:1.1daa460")
+    implementation("no.nav.helse:rapids-rivers:1.73105d8")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")

@@ -1,13 +1,14 @@
 package no.nav.helse.spetakkel
 
-import no.nav.helse.rapids_rivers.AppBuilder
+import no.nav.helse.rapids_rivers.RapidApplication
 
 fun main() {
     val env = System.getenv().toMutableMap()
     env.putIfAbsent("KAFKA_CONSUMER_GROUP_ID", "spetakkel-v1")
     env.putIfAbsent("KAFKA_RAPID_TOPIC", "privat-helse-sykepenger-rapid-v1")
 
-    val appBuilder = AppBuilder(env)
-    appBuilder.register(TilstandsendringsRiver())
-    appBuilder.start()
+    RapidApplication.Companion.Builder(env)
+            .build()
+            .apply { TilstandsendringsRiver(this) }
+            .start()
 }

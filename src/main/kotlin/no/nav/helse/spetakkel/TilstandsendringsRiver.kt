@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 
-class TilstandsendringsRiver() : River() {
+class TilstandsendringsRiver(rapidsConnection: RapidsConnection) : River.PacketListener {
     private val log = LoggerFactory.getLogger(TilstandsendringsRiver::class.java)
 
     private val dataPointFactory = InfluxDBDataPointFactory(mapOf(
@@ -23,11 +23,13 @@ class TilstandsendringsRiver() : River() {
     private val timezone = ZoneId.of("Europe/Oslo")
 
     init {
-        validate { it.path("@event_name").asText() == "vedtaksperiode_endret" }
-        validate { it.hasNonNull("vedtaksperiodeId") }
-        validate { it.hasNonNull("gjeldendeTilstand") }
-        validate { it.hasNonNull("forrigeTilstand") }
-        validate { it.hasNonNull("endringstidspunkt") }
+        River(rapidsConnection).apply {
+            validate { it.path("@event_name").asText() == "vedtaksperiode_endret" }
+            validate { it.hasNonNull("vedtaksperiodeId") }
+            validate { it.hasNonNull("gjeldendeTilstand") }
+            validate { it.hasNonNull("forrigeTilstand") }
+            validate { it.hasNonNull("endringstidspunkt") }
+        }.register(this)
     }
 
     override fun onPacket(packet: JsonNode, context: RapidsConnection.MessageContext) {
