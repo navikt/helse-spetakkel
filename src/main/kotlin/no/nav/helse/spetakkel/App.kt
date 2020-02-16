@@ -11,5 +11,6 @@ fun main() {
 
     RapidApplication.create(env).apply {
         TilstandsendringsRiver(this)
+        PåminnelseMonitor(this)
     }.start()
 }
