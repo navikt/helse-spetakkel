@@ -30,6 +30,7 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
             validate { it.requireKey("forrigeTilstand") }
             validate { it.requireKey("gjeldendeTilstand") }
             validate { it.requireKey("endringstidspunkt") }
+            validate { it.requireKey("timeout") }
         }.register(this)
     }
 
@@ -76,6 +77,11 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
     )
 
     private fun MutableMap<String, HistoriskTilstandsendring>.lagreTilstandsendring(tilstandsendring: Tilstandsendring) {
+        if (tilstandsendring.timeout == 0L) {
+            tilstandsendringer.remove(tilstandsendring.vedtaksperiodeId)
+            return
+        }
+
         this[tilstandsendring.vedtaksperiodeId] =
             HistoriskTilstandsendring(tilstandsendring.gjeldendeTilstand, tilstandsendring.endringstidspunkt)
     }
@@ -97,5 +103,6 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
         val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
         val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
         val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
+        val timeout: Long get() = packet["timeout"].asLong()
     }
 }
