@@ -17,7 +17,7 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("no.nav.helse:rapids-rivers:1.73105d8")
+    implementation("no.nav.helse:rapids-rivers:1.acac29f")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
@@ -41,7 +41,7 @@ java {
 }
 
 tasks.named<Jar>("jar") {
-    baseName = "app"
+    archiveBaseName.set("app")
 
     manifest {
         attributes["Main-Class"] = mainClass

@@ -1,12 +1,9 @@
 package no.nav.helse.spetakkel
 
-import com.fasterxml.jackson.databind.JsonNode
+import no.nav.helse.rapids_rivers.*
 import no.nav.helse.spetakkel.metrikker.InfluxDBDataPointFactory
 import no.nav.helse.spetakkel.metrikker.SensuMetricReporter
 import org.slf4j.LoggerFactory
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
-import java.time.LocalDateTime
 import java.time.ZoneId
 
 
@@ -24,15 +21,15 @@ class TilstandsendringsRiver(rapidsConnection: RapidsConnection) : River.PacketL
 
     init {
         River(rapidsConnection).apply {
-            validate { it.path("@event_name").asText() == "vedtaksperiode_endret" }
-            validate { it.hasNonNull("vedtaksperiodeId") }
-            validate { it.hasNonNull("gjeldendeTilstand") }
-            validate { it.hasNonNull("forrigeTilstand") }
-            validate { it.hasNonNull("endringstidspunkt") }
+            validate { it.requireValue("@event_name", "vedtaksperiode_endret") }
+            validate { it.requireKey("vedtaksperiodeId") }
+            validate { it.requireKey("gjeldendeTilstand") }
+            validate { it.requireKey("forrigeTilstand") }
+            validate { it.requireKey("endringstidspunkt") }
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonNode, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         val endringstidspunkt = packet["endringstidspunkt"]
                 .asLocalDateTime()
                 .atZone(timezone)
@@ -47,7 +44,7 @@ class TilstandsendringsRiver(rapidsConnection: RapidsConnection) : River.PacketL
                 .toEpochMilli()))
     }
 
-    private fun JsonNode.asLocalDateTime() =
-            asText().let { LocalDateTime.parse(it) }
+    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+    }
 
 }
