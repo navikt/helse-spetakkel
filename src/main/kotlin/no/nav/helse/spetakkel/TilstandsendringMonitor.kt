@@ -60,7 +60,8 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
 
         val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
 
-        histogram.observe(diff.toDouble())
+        histogram.labels(historiskTilstandsendring.tilstand)
+            .observe(diff.toDouble())
         log.info(
             "vedtaksperiode {} var i {} i {} ({}); gikk til {} {}",
             keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
