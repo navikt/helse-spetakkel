@@ -34,28 +34,29 @@ internal class PåminnelseMonitor(
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        if (2 > packet["antallGangerPåminnet"].asInt()) return
-        alert(packet)
+        val påminnelse = Påminnelse(packet)
+        if (2 > påminnelse.antallGangerPåminnet) return
+        alert(påminnelse)
     }
 
     override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 
-    private fun alert(packet: JsonMessage) {
+    private fun alert(påminnelse: Påminnelse) {
         log.error(
             "vedtaksperiode {} sitter fast i tilstand {}; har blitt påminnet {} ganger siden {}",
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText()),
-            keyValue("tilstand", packet["tilstand"].asText()),
-            keyValue("antallGangerPåminnet", packet["antallGangerPåminnet"].asInt()),
-            keyValue("endringstidspunkt", packet["endringstidspunkt"].asLocalDateTime())
+            keyValue("vedtaksperiodeId", påminnelse.vedtaksperiodeId),
+            keyValue("tilstand", påminnelse.tilstand),
+            keyValue("antallGangerPåminnet", påminnelse.antallGangerPåminnet),
+            keyValue("endringstidspunkt", påminnelse.endringstidspunkt)
         )
 
         alertSlack(
             "#team-bømlo-alerts", "spetakkel", String.format(
                 "Vedtaksperiode %s sitter fast i tilstand %s. Den er forsøkt påminnet %d ganger siden %s",
-                packet["vedtaksperiodeId"].asText(),
-                packet["tilstand"].asText(),
-                packet["antallGangerPåminnet"].asInt(),
-                packet["endringstidspunkt"].asLocalDateTime().format(ISO_LOCAL_DATE_TIME)
+                påminnelse.vedtaksperiodeId,
+                påminnelse.tilstand,
+                påminnelse.antallGangerPåminnet,
+                påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
             ),
             ":exclamation:"
         )
@@ -87,5 +88,12 @@ internal class PåminnelseMonitor(
         } catch (err: IOException) {
             log.error("feil ved posting til slack: {}", err)
         }
+    }
+
+    private class Påminnelse(private val packet: JsonMessage) {
+        val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
+        val tilstand: String get() = packet["tilstand"].asText()
+        val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
+        val antallGangerPåminnet: Int get() = packet["antallGangerPåminnet"].asInt()
     }
 }
