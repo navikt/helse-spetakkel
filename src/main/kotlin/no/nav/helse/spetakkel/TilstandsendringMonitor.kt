@@ -91,7 +91,7 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
             // if the one we have is not the previous of the new,
             // we have probably missed an event, so we can't calculate diff
             if (this.tilstand != other.forrigeTilstand) return null
-            return ChronoUnit.SECONDS.between(other.endringstidspunkt, this.endringstidspunkt)
+            return ChronoUnit.SECONDS.between(this.endringstidspunkt, other.endringstidspunkt)
         }
     }
 
