@@ -11,6 +11,6 @@ fun main() {
 
     RapidApplication.create(env).apply {
         TilstandsendringsRiver(this)
-        PåminnelseMonitor(this)
+        PåminnelseMonitor(this, env["SLACK_WEBHOOK_URL"])
     }.start()
 }
