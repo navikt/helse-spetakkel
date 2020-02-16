@@ -7,6 +7,7 @@ import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.temporal.ChronoUnit
 
 class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
@@ -48,7 +49,7 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
         val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
 
         log.info(
-            "vedtaksperiode {} var i {} i {}",
+            "vedtaksperiode {} var i {} i {} ({}); gikk til {} {}",
             keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
             keyValue("tilstand", tilstandsendring.forrigeTilstand),
             String.format(
@@ -57,7 +58,10 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
                 (diff % 86400) / 3600,
                 (diff % 3600) / 60,
                 diff % 60
-            )
+            ),
+            historiskTilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME),
+            tilstandsendring.gjeldendeTilstand,
+            tilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
         )
         context.send(resultat(tilstandsendring, diff))
     }
