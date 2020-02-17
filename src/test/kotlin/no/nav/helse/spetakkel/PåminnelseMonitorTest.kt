@@ -61,12 +61,16 @@ internal class PåminnelseMonitorTest {
 
     private fun påminnelse(antallGangerPåminnet: Int) = """
 {
-    "@event_name": "påminnelse",
-    "vedtaksperiodeId": "${UUID.randomUUID()}",
-    "antallGangerPåminnet": $antallGangerPåminnet,
-    "endringstidspunkt": "${LocalDateTime.now()}",
-    "tilstand": "SOME_STATE"
-}
+    "@event_name":"påminnelse",
+    "aktørId":"${UUID.randomUUID()}",
+    "fødselsnummer":"${UUID.randomUUID()}",
+    "organisasjonsnummer":"${UUID.randomUUID()}",
+    "vedtaksperiodeId":"${UUID.randomUUID()}",
+    "tilstand":"A_STATE_NAME",
+    "tilstandsendringstidspunkt":"${LocalDateTime.now()}",
+    "antallGangerPåminnet":$antallGangerPåminnet,
+    "påminnelsestidspunkt":"${LocalDateTime.now()}",
+    "nestePåminnelsestidspunkt":"${LocalDateTime.now()}"}
 """
 
     private class TestRapid : RapidsConnection() {

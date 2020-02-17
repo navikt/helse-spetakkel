@@ -28,7 +28,7 @@ internal class PåminnelseMonitor(
             validate { it.requireValue("@event_name", "påminnelse") }
             validate { it.requireKey("vedtaksperiodeId") }
             validate { it.requireKey("antallGangerPåminnet") }
-            validate { it.requireKey("endringstidspunkt") }
+            validate { it.requireKey("tilstandsendringstidspunkt") }
             validate { it.requireKey("tilstand") }
         }.register(this)
     }
@@ -47,7 +47,7 @@ internal class PåminnelseMonitor(
             keyValue("vedtaksperiodeId", påminnelse.vedtaksperiodeId),
             keyValue("tilstand", påminnelse.tilstand),
             keyValue("antallGangerPåminnet", påminnelse.antallGangerPåminnet),
-            keyValue("endringstidspunkt", påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME))
+            keyValue("tilstandsendringstidspunkt", påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME))
         )
 
         alertSlack(
@@ -93,7 +93,7 @@ internal class PåminnelseMonitor(
     private class Påminnelse(private val packet: JsonMessage) {
         val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
         val tilstand: String get() = packet["tilstand"].asText()
-        val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
+        val endringstidspunkt get() = packet["tilstandsendringstidspunkt"].asLocalDateTime()
         val antallGangerPåminnet: Int get() = packet["antallGangerPåminnet"].asInt()
     }
 }
