@@ -1,6 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.4.0"
+val flywayVersion = "6.2.3"
+val hikariVersion = "3.4.2"
+val vaultJdbcVersion = "1.3.1"
+val kotliqueryVersion = "1.3.1"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
@@ -18,6 +22,12 @@ val githubPassword: String by project
 
 dependencies {
     implementation("no.nav.helse:rapids-rivers:1.acac29f")
+
+    implementation("org.flywaydb:flyway-core:$flywayVersion")
+    implementation("com.zaxxer:HikariCP:$hikariVersion")
+    implementation("no.nav:vault-jdbc:$vaultJdbcVersion")
+    implementation("com.github.seratch:kotliquery:$kotliqueryVersion")
+
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")

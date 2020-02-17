@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.prometheus.client.Histogram
+import kotliquery.queryOf
+import kotliquery.sessionOf
+import kotliquery.using
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
@@ -11,8 +14,12 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.temporal.ChronoUnit
+import javax.sql.DataSource
 
-class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
+class TilstandsendringMonitor(
+    rapidsConnection: RapidsConnection,
+    private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao
+) : River.PacketListener {
 
     private companion object {
         private val log = LoggerFactory.getLogger(TilstandsendringMonitor::class.java)
@@ -20,7 +27,10 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
             .registerModule(JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
-        private val histogram = Histogram.build("vedtaksperiode_tilstand_latency_seconds", "Antall sekunder en vedtaksperiode er i en tilstand")
+        private val histogram = Histogram.build(
+            "vedtaksperiode_tilstand_latency_seconds",
+            "Antall sekunder en vedtaksperiode er i en tilstand"
+        )
             .labelNames("tilstand")
             .buckets(1.minute, 1.hours, 12.hours, 24.hours, 7.days, 30.days)
             .register()
@@ -30,8 +40,6 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
         private val Int.days get() = Duration.ofDays(this.toLong()).toDouble()
         private fun Duration.toDouble() = this.toSeconds().toDouble()
     }
-
-    private val tilstandsendringer = mutableMapOf<String, HistoriskTilstandsendring>()
 
     init {
         River(rapidsConnection).apply {
@@ -48,15 +56,16 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        val tilstandsendring = Tilstandsendring(packet)
+        val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
 
-        val historiskTilstandsendring = tilstandsendringer[tilstandsendring.vedtaksperiodeId]
-            ?: return tilstandsendringer.lagreTilstandsendring(tilstandsendring)
+        val historiskTilstandsendring =
+            vedtaksperiodeTilstandDao.hentGjeldendeTilstand(tilstandsendring.vedtaksperiodeId)
+                ?: return vedtaksperiodeTilstandDao.lagreTilstandsendring(tilstandsendring)
 
         // if the one we have is newer, discard current
         if (historiskTilstandsendring.endringstidspunkt > tilstandsendring.endringstidspunkt) return
 
-        tilstandsendringer.lagreTilstandsendring(tilstandsendring)
+        vedtaksperiodeTilstandDao.oppdaterTilstandsendring(tilstandsendring)
 
         val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
 
@@ -82,7 +91,7 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
 
     override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 
-    private fun resultat(tilstandsendring: Tilstandsendring, diff: Long) = objectMapper.writeValueAsString(
+    private fun resultat(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring, diff: Long) = objectMapper.writeValueAsString(
         mapOf(
             "@event_name" to "vedtaksperiode_tid_i_tilstand",
             "aktørId" to tilstandsendring.aktørId,
@@ -94,33 +103,80 @@ class TilstandsendringMonitor(rapidsConnection: RapidsConnection) : River.Packet
         )
     )
 
-    private fun MutableMap<String, HistoriskTilstandsendring>.lagreTilstandsendring(tilstandsendring: Tilstandsendring) {
-        if (tilstandsendring.timeout == 0L) {
-            tilstandsendringer.remove(tilstandsendring.vedtaksperiodeId)
-            return
+    class VedtaksperiodeTilstandDao(private val dataSource: DataSource) {
+
+        fun hentGjeldendeTilstand(vedtaksperiodeId: String): HistoriskTilstandsendring? {
+            return using(sessionOf(dataSource)) { session ->
+                session.run(
+                    queryOf(
+                        "SELECT vedtaksperiode_id, tilstand, endringstidspunkt FROM vedtaksperiode_tilstand " +
+                                "WHERE vedtaksperiode_id = ? " +
+                                "LIMIT 1", vedtaksperiodeId
+                    ).map {
+                        HistoriskTilstandsendring(
+                            tilstand = it.string("tilstand"),
+                            endringstidspunkt = it.localDateTime("endringstidspunkt")
+                        )
+                    }.asSingle
+                )
+            }
         }
 
-        this[tilstandsendring.vedtaksperiodeId] =
-            HistoriskTilstandsendring(tilstandsendring.gjeldendeTilstand, tilstandsendring.endringstidspunkt)
-    }
+        fun lagreTilstandsendring(tilstandsendring: Tilstandsendring) {
+            using(sessionOf(dataSource)) { session ->
+                if (tilstandsendring.timeout == 0L) return@using
 
-    private class HistoriskTilstandsendring(val tilstand: String, val endringstidspunkt: LocalDateTime) {
-        fun tidITilstand(other: Tilstandsendring): Long? {
-            // if the one we have is not the previous of the new,
-            // we have probably missed an event, so we can't calculate diff
-            if (this.tilstand != other.forrigeTilstand) return null
-            return ChronoUnit.SECONDS.between(this.endringstidspunkt, other.endringstidspunkt)
+                session.run(
+                    queryOf(
+                        "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, endringstidspunkt) VALUES (?, ?, ?)",
+                        tilstandsendring.vedtaksperiodeId,
+                        tilstandsendring.gjeldendeTilstand,
+                        tilstandsendring.endringstidspunkt
+                    ).asExecute
+                )
+            }
         }
-    }
 
-    private class Tilstandsendring(private val packet: JsonMessage) {
-        val aktørId: String get() = packet["aktørId"].asText()
-        val fødselsnummer: String get() = packet["fødselsnummer"].asText()
-        val organisasjonsnummer: String get() = packet["organisasjonsnummer"].asText()
-        val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
-        val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
-        val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
-        val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
-        val timeout: Long get() = packet["timeout"].asLong()
+        fun oppdaterTilstandsendring(tilstandsendring: Tilstandsendring) {
+            using(sessionOf(dataSource)) { session ->
+                if (tilstandsendring.timeout == 0L) {
+                    session.run(
+                        queryOf(
+                            "DELETE FROM vedtaksperiode_tilstand WHERE vedtaksperiode_id=?",
+                            tilstandsendring.vedtaksperiodeId
+                        ).asExecute
+                    )
+                } else {
+                    session.run(
+                        queryOf(
+                            "UPDATE vedtaksperiode_tilstand SET tilstand=?, endringstidspunkt=? WHERE vedtaksperiode_id=?",
+                            tilstandsendring.gjeldendeTilstand,
+                            tilstandsendring.endringstidspunkt,
+                            tilstandsendring.vedtaksperiodeId
+                        ).asExecute
+                    )
+                }
+            }
+        }
+
+        class HistoriskTilstandsendring(val tilstand: String, val endringstidspunkt: LocalDateTime) {
+            fun tidITilstand(other: Tilstandsendring): Long? {
+                // if the one we have is not the previous of the new,
+                // we have probably missed an event, so we can't calculate diff
+                if (this.tilstand != other.forrigeTilstand) return null
+                return ChronoUnit.SECONDS.between(this.endringstidspunkt, other.endringstidspunkt)
+            }
+        }
+
+        class Tilstandsendring(private val packet: JsonMessage) {
+            val aktørId: String get() = packet["aktørId"].asText()
+            val fødselsnummer: String get() = packet["fødselsnummer"].asText()
+            val organisasjonsnummer: String get() = packet["organisasjonsnummer"].asText()
+            val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
+            val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
+            val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
+            val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
+            val timeout: Long get() = packet["timeout"].asLong()
+        }
     }
 }

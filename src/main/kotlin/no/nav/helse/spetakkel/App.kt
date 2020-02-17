@@ -1,6 +1,7 @@
 package no.nav.helse.spetakkel
 
 import io.ktor.util.KtorExperimentalAPI
+import no.nav.helse.DataSourceBuilder
 import no.nav.helse.rapids_rivers.RapidApplication
 
 @KtorExperimentalAPI
@@ -9,9 +10,12 @@ fun main() {
     env.putIfAbsent("KAFKA_CONSUMER_GROUP_ID", "spetakkel-v1")
     env.putIfAbsent("KAFKA_RAPID_TOPIC", "helse-rapid-v1")
 
+    val dataSourceBuilder = DataSourceBuilder(env)
+    dataSourceBuilder.migrate()
+
     RapidApplication.create(env).apply {
         TilstandsendringsRiver(this)
         PåminnelseMonitor(this, env["SLACK_WEBHOOK_URL"])
-        TilstandsendringMonitor(this)
+        TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSourceBuilder.getDataSource()))
     }.start()
 }
