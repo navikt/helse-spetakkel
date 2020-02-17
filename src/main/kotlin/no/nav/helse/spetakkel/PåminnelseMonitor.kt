@@ -7,6 +7,7 @@ import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
@@ -72,23 +73,35 @@ internal class PåminnelseMonitor(
                     "icon_emoji" to icon
                 )
             )
-        )
+        ) ?: log.info("not alerting slack because URL is not set")
     }
 
     private fun String.post(jsonPayload: String) {
         try {
-            (URL(this).openConnection() as HttpURLConnection).apply {
+            val connection = (URL(this).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
+                connectTimeout = 1000
+                readTimeout = 1000
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("User-Agent", "navikt/spetakkel")
 
                 outputStream.use { it.bufferedWriter(Charsets.UTF_8).write(jsonPayload) }
-            }.responseCode
+            }
+
+            val responseCode = connection.responseCode
+
+            if (connection.responseCode in 200..299) {
+                log.info("response from slack: code=$responseCode body=${connection.inputStream.readText()}")
+            } else {
+                log.error("response from slack: code=$responseCode body=${connection.errorStream.readText()}")
+            }
         } catch (err: IOException) {
             log.error("feil ved posting til slack: {}", err)
         }
     }
+
+    private fun InputStream.readText() = use { it.bufferedReader().readText() }
 
     private class Påminnelse(private val packet: JsonMessage) {
         val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
