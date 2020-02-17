@@ -86,7 +86,7 @@ internal class PåminnelseMonitor(
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("User-Agent", "navikt/spetakkel")
 
-                outputStream.use { it.bufferedWriter(Charsets.UTF_8).write(jsonPayload) }
+                outputStream.use { it.bufferedWriter(Charsets.UTF_8).apply { write(jsonPayload); flush() } }
             }
 
             val responseCode = connection.responseCode

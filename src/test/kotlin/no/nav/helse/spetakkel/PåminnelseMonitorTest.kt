@@ -17,6 +17,8 @@ internal class PåminnelseMonitorTest {
     companion object {
 
         private val wireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
+        private lateinit var client: WireMock
+
         private lateinit var webhookUrl: String
         private const val webhookPath = "/webhook"
 
@@ -25,6 +27,12 @@ internal class PåminnelseMonitorTest {
         fun setup() {
             wireMockServer.start()
             webhookUrl = wireMockServer.baseUrl() + webhookPath
+
+            client = create().port(wireMockServer.port()).build().apply {
+                configureFor(this)
+            }
+
+            stubFor(post(webhookPath).willReturn(ok()))
         }
 
         @AfterAll
@@ -34,29 +42,30 @@ internal class PåminnelseMonitorTest {
         }
     }
 
-    private val client = create().port(wireMockServer.port()).build()
     private val rapid = TestRapid()
     private lateinit var monitor: PåminnelseMonitor
 
     @BeforeEach
     fun init() {
         client.resetRequests()
-
-        post(webhookPath).willReturn(ok())
-
         monitor = PåminnelseMonitor(rapid, webhookUrl)
     }
 
     @Test
     fun `lager ikke alert ved påminnelse nr 1`() {
         rapid.sendTestMessage(påminnelse(1))
-        client.verifyThat(0, postRequestedFor(urlEqualTo(webhookPath)))
+        verify(0, postRequestedFor(urlEqualTo(webhookPath)))
     }
 
     @Test
     fun `lager alert ved påminnelse nr 2`() {
         rapid.sendTestMessage(påminnelse(2))
-        client.verifyThat(1, postRequestedFor(urlEqualTo(webhookPath)))
+        verify(1, postRequestedFor(urlEqualTo(webhookPath))
+            .withRequestBody(matchingJsonPath("$.channel", equalTo("#team-bømlo-alerts")))
+            .withRequestBody(matchingJsonPath("$.username", equalTo("spetakkel")))
+            .withRequestBody(matchingJsonPath("$.icon_emoji", equalTo(":exclamation:")))
+            .withRequestBody(matchingJsonPath("$.text", matching("Vedtaksperiode .* sitter fast i tilstand .*")))
+        )
     }
 
     private fun påminnelse(antallGangerPåminnet: Int) = """
