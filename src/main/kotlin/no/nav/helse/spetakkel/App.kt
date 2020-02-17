@@ -1,7 +1,6 @@
 package no.nav.helse.spetakkel
 
 import io.ktor.util.KtorExperimentalAPI
-import no.nav.helse.DataSourceBuilder
 import no.nav.helse.rapids_rivers.RapidApplication
 
 @KtorExperimentalAPI
