@@ -29,6 +29,8 @@ dependencies {
     implementation("no.nav:vault-jdbc:$vaultJdbcVersion")
     implementation("com.github.seratch:kotliquery:$kotliqueryVersion")
 
+    implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
+
     testImplementation("com.opentable.components:otj-pg-embedded:0.13.3")
     testImplementation("com.github.tomakehurst:wiremock:$wireMockVersion") {
         exclude(group = "junit")

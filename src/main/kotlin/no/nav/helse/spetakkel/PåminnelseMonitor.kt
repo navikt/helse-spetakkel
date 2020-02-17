@@ -1,5 +1,7 @@
 package no.nav.helse.spetakkel
 
+import com.bazaarvoice.jackson.rison.RisonFactory
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -10,7 +12,9 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
+
 
 internal class PåminnelseMonitor(
     rapidsConnection: RapidsConnection,
@@ -22,6 +26,8 @@ internal class PåminnelseMonitor(
         private val objectMapper = jacksonObjectMapper()
             .registerModule(JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+
+        private val risonMapper = ObjectMapper(RisonFactory())
     }
 
     init {
@@ -53,8 +59,10 @@ internal class PåminnelseMonitor(
 
         alertSlack(
             "#team-bømlo-alerts", "spetakkel", String.format(
-                "Vedtaksperiode %s sitter fast i tilstand %s. Den er forsøkt påminnet %d ganger siden %s",
+                "Vedtaksperiode <%s|%s> (<%s|tjenestekall>) sitter fast i tilstand %s. Den er forsøkt påminnet %d ganger siden %s",
+                kibanaLink("logstash-apps-*", påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt, LocalDateTime.now()),
                 påminnelse.vedtaksperiodeId,
+                kibanaLink("tjenestekall-*", påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt, LocalDateTime.now()),
                 påminnelse.tilstand,
                 påminnelse.antallGangerPåminnet,
                 påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
@@ -99,6 +107,38 @@ internal class PåminnelseMonitor(
         } catch (err: IOException) {
             log.error("feil ved posting til slack: {}", err)
         }
+    }
+
+    private fun kibanaLink(
+        index: String = "logstash-apps-*",
+        vedtaksperiodeId: String,
+        starttidspunkt: LocalDateTime,
+        sluttidspunkt: LocalDateTime
+    ): String {
+        val urlFormat = "https://logs.adeo.no/app/kibana#/discover?_a=%s&_g=%s"
+        val searchQuery = "\"%s\""
+
+        val appState = mapOf(
+            "index" to index,
+            "query" to mapOf(
+                "language" to "lucene",
+                "query" to String.format(searchQuery, vedtaksperiodeId)
+            )
+        )
+
+        val globalState = mapOf(
+            "time" to mapOf(
+                "from" to starttidspunkt.format(ISO_LOCAL_DATE_TIME),
+                "mode" to "absolute",
+                "to" to sluttidspunkt.format(ISO_LOCAL_DATE_TIME)
+            )
+        )
+
+        return String.format(
+            urlFormat,
+            risonMapper.writeValueAsString(appState),
+            risonMapper.writeValueAsString(globalState)
+        )
     }
 
     private fun InputStream.readText() = use { it.bufferedReader().readText() }
