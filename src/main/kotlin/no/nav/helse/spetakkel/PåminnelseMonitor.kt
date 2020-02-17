@@ -39,9 +39,7 @@ internal class PåminnelseMonitor(
         alert(påminnelse)
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
-        log.info("$problems")
-    }
+    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 
     private fun alert(påminnelse: Påminnelse) {
         log.error(
