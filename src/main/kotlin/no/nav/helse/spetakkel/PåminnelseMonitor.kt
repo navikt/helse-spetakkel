@@ -60,9 +60,9 @@ internal class PåminnelseMonitor(
         alertSlack(
             "#team-bømlo-alerts", "spetakkel", String.format(
                 "Vedtaksperiode <%s|%s> (<%s|tjenestekall>) sitter fast i tilstand %s. Den er forsøkt påminnet %d ganger siden %s",
-                kibanaLink(påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt, LocalDateTime.now()),
+                kibanaLink(påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt),
                 påminnelse.vedtaksperiodeId,
-                kibanaLink(påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt, LocalDateTime.now(), "tjenestekall-*"),
+                kibanaLink(påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt, "tjenestekall-*"),
                 påminnelse.tilstand,
                 påminnelse.antallGangerPåminnet,
                 påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
@@ -112,7 +112,6 @@ internal class PåminnelseMonitor(
     private fun kibanaLink(
         vedtaksperiodeId: String,
         starttidspunkt: LocalDateTime,
-        sluttidspunkt: LocalDateTime,
         index: String = "96e648c0-980a-11e9-830a-e17bbd64b4db"
     ): String {
         val urlFormat = "https://logs.adeo.no/app/kibana#/discover?_a=%s&_g=%s"
@@ -130,7 +129,7 @@ internal class PåminnelseMonitor(
             "time" to mapOf(
                 "from" to starttidspunkt.format(ISO_LOCAL_DATE_TIME),
                 "mode" to "absolute",
-                "to" to sluttidspunkt.format(ISO_LOCAL_DATE_TIME)
+                "to" to "now"
             )
         )
 
