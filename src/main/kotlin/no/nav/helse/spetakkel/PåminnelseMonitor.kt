@@ -39,15 +39,17 @@ internal class PåminnelseMonitor(
         alert(påminnelse)
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
+    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        log.info("$problems")
+    }
 
     private fun alert(påminnelse: Påminnelse) {
         log.error(
-            "vedtaksperiode {} sitter fast i tilstand {}; har blitt påminnet {} ganger siden {}",
+            "{} sitter fast i {}; har blitt påminnet {} ganger siden {}",
             keyValue("vedtaksperiodeId", påminnelse.vedtaksperiodeId),
             keyValue("tilstand", påminnelse.tilstand),
             keyValue("antallGangerPåminnet", påminnelse.antallGangerPåminnet),
-            keyValue("endringstidspunkt", påminnelse.endringstidspunkt)
+            keyValue("endringstidspunkt", påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME))
         )
 
         alertSlack(

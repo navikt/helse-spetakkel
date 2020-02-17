@@ -5,6 +5,7 @@ val flywayVersion = "6.2.3"
 val hikariVersion = "3.4.2"
 val vaultJdbcVersion = "1.3.1"
 val kotliqueryVersion = "1.3.1"
+val wireMockVersion = "2.26.0"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
@@ -29,6 +30,9 @@ dependencies {
     implementation("com.github.seratch:kotliquery:$kotliqueryVersion")
 
     testImplementation("com.opentable.components:otj-pg-embedded:0.13.3")
+    testImplementation("com.github.tomakehurst:wiremock:$wireMockVersion") {
+        exclude(group = "junit")
+    }
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
