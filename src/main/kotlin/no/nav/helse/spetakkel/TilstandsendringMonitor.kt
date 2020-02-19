@@ -75,23 +75,17 @@ class TilstandsendringMonitor(
             "vedtaksperiode {} var i {} i {} ({}); gikk til {} {}",
             keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
             keyValue("tilstand", tilstandsendring.forrigeTilstand),
-            String.format(
-                "%d dag(er), %d time(r), %d minutt(er) og %d sekund(er)",
-                diff / 86400,
-                (diff % 86400) / 3600,
-                (diff % 3600) / 60,
-                diff % 60
-            ),
+            humanReadableTime(diff),
             historiskTilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME),
             tilstandsendring.gjeldendeTilstand,
             tilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
         )
-        context.send(resultat(tilstandsendring, diff))
+        context.send(resultat(historiskTilstandsendring, tilstandsendring, diff))
     }
 
     override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 
-    private fun resultat(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring, diff: Long) = objectMapper.writeValueAsString(
+    private fun resultat(historiskTilstandsendring: VedtaksperiodeTilstandDao.HistoriskTilstandsendring, tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring, diff: Long) = objectMapper.writeValueAsString(
         mapOf(
             "@event_name" to "vedtaksperiode_tid_i_tilstand",
             "aktørId" to tilstandsendring.aktørId,
@@ -99,6 +93,7 @@ class TilstandsendringMonitor(
             "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
             "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
             "tilstand" to tilstandsendring.forrigeTilstand,
+            "timeout" to historiskTilstandsendring.timeout,
             "tid_i_tilstand" to diff
         )
     )
@@ -109,12 +104,13 @@ class TilstandsendringMonitor(
             return using(sessionOf(dataSource)) { session ->
                 session.run(
                     queryOf(
-                        "SELECT vedtaksperiode_id, tilstand, endringstidspunkt FROM vedtaksperiode_tilstand " +
+                        "SELECT vedtaksperiode_id, tilstand, timeout, endringstidspunkt FROM vedtaksperiode_tilstand " +
                                 "WHERE vedtaksperiode_id = ? " +
                                 "LIMIT 1", vedtaksperiodeId
                     ).map {
                         HistoriskTilstandsendring(
                             tilstand = it.string("tilstand"),
+                            timeout = it.long("timeout"),
                             endringstidspunkt = it.localDateTime("endringstidspunkt")
                         )
                     }.asSingle
@@ -128,9 +124,10 @@ class TilstandsendringMonitor(
 
                 session.run(
                     queryOf(
-                        "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, endringstidspunkt) VALUES (?, ?, ?)",
+                        "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, timeout, endringstidspunkt) VALUES (?, ?, ?, ?)",
                         tilstandsendring.vedtaksperiodeId,
                         tilstandsendring.gjeldendeTilstand,
+                        tilstandsendring.timeout,
                         tilstandsendring.endringstidspunkt
                     ).asExecute
                 )
@@ -149,8 +146,9 @@ class TilstandsendringMonitor(
                 } else {
                     session.run(
                         queryOf(
-                            "UPDATE vedtaksperiode_tilstand SET tilstand=?, endringstidspunkt=? WHERE vedtaksperiode_id=?",
+                            "UPDATE vedtaksperiode_tilstand SET tilstand=?, timeout = ?, endringstidspunkt=? WHERE vedtaksperiode_id=?",
                             tilstandsendring.gjeldendeTilstand,
+                            tilstandsendring.timeout,
                             tilstandsendring.endringstidspunkt,
                             tilstandsendring.vedtaksperiodeId
                         ).asExecute
@@ -159,7 +157,7 @@ class TilstandsendringMonitor(
             }
         }
 
-        class HistoriskTilstandsendring(val tilstand: String, val endringstidspunkt: LocalDateTime) {
+        class HistoriskTilstandsendring(val tilstand: String, val timeout: Long, val endringstidspunkt: LocalDateTime) {
             fun tidITilstand(other: Tilstandsendring): Long? {
                 // if the one we have is not the previous of the new,
                 // we have probably missed an event, so we can't calculate diff
