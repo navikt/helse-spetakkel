@@ -7,8 +7,11 @@ internal fun humanReadableTime(time: Long): String {
         addIfNotZero(time % 3600 / 60, "%d minutt", "%d minutter")
         addIfNotZero(time % 60, "%d sekund", "%d sekunder")
     }.let {
-        if (it.size < 2) it.joinToString()
-        else it.subList(0, it.size - 1).joinToString() + " og ${it.last()}"
+        when {
+            it.isEmpty() -> "N/A"
+            it.size == 1 -> it.joinToString()
+            else -> it.subList(0, it.size - 1).joinToString() + " og ${it.last()}"
+        }
     }
 }
 
