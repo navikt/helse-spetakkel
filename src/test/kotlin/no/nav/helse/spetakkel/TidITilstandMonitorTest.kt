@@ -60,6 +60,12 @@ internal class TidITilstandMonitorTest {
     }
 
     @Test
+    fun `lager ikke alert ved timeout lik 0`() {
+        rapid.sendTestMessage(tidITilstand(0, 3599))
+        verify(0, postRequestedFor(urlEqualTo(webhookPath)))
+    }
+
+    @Test
     fun `lager alert ved tid_i_tilstand større enn timeout`() {
         rapid.sendTestMessage(tidITilstand(3600, 4200))
         verify(1, postRequestedFor(urlEqualTo(webhookPath))

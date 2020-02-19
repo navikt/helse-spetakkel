@@ -55,7 +55,7 @@ internal class TidITilstandMonitor(
         val tidITilstand = TidITilstand(packet)
         tidITilstand.observe(histogram)
 
-        if (tidITilstand.tidITilstand < tidITilstand.forventetTidITilstand) return
+        if (tidITilstand.forventetTidITilstand == 0L || tidITilstand.tidITilstand < tidITilstand.forventetTidITilstand) return
 
         log.warn(
             "{} kom seg omsider videre fra {} til {} etter {} fra {}. Forventet tid i tilstand var {}",
