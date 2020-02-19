@@ -2,7 +2,9 @@ package no.nav.helse.spetakkel
 
 import io.ktor.util.KtorExperimentalAPI
 import no.nav.helse.rapids_rivers.RapidApplication
+import kotlin.time.ExperimentalTime
 
+@ExperimentalTime
 @KtorExperimentalAPI
 fun main() {
     val env = System.getenv().toMutableMap()
@@ -12,9 +14,18 @@ fun main() {
     val dataSourceBuilder = DataSourceBuilder(env)
     dataSourceBuilder.migrate()
 
+    val slackClient = env["SLACK_WEBHOOK_URL"]?.let {
+        SlackClient(
+            webhookUrl = it,
+            defaultChannel = "#team-bømlo-alerts",
+            defaultUsername = "spetakkel"
+        )
+    }
+
     RapidApplication.create(env).apply {
         TilstandsendringsRiver(this)
-        PåminnelseMonitor(this, env["SLACK_WEBHOOK_URL"])
+        PåminnelseMonitor(this, slackClient)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSourceBuilder.getDataSource()))
+        TidITilstandMonitor(this, slackClient)
     }.start()
 }

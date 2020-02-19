@@ -1,33 +1,17 @@
 package no.nav.helse.spetakkel
 
-import com.bazaarvoice.jackson.rison.RisonFactory
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
-import java.io.IOException
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
-
 
 internal class PåminnelseMonitor(
     rapidsConnection: RapidsConnection,
-    private val webhookUrl: String?
+    private val slackClient: SlackClient?
 ) : River.PacketListener {
 
     private companion object {
         private val log = LoggerFactory.getLogger(PåminnelseMonitor::class.java)
-        private val objectMapper = jacksonObjectMapper()
-            .registerModule(JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-
-        private val risonMapper = ObjectMapper(RisonFactory())
     }
 
     init {
@@ -57,90 +41,23 @@ internal class PåminnelseMonitor(
             keyValue("tilstandsendringstidspunkt", påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME))
         )
 
-        alertSlack(
-            "#team-bømlo-alerts", "spetakkel", String.format(
+        slackClient?.postMessage(
+            String.format(
                 "Vedtaksperiode <%s|%s> (<%s|tjenestekall>) sitter fast i tilstand %s. Den er forsøkt påminnet %d ganger siden %s",
-                kibanaLink(påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt),
+                Kibana.createUrl(String.format("\"%s\"", påminnelse.vedtaksperiodeId), påminnelse.endringstidspunkt),
                 påminnelse.vedtaksperiodeId,
-                kibanaLink(påminnelse.vedtaksperiodeId, påminnelse.endringstidspunkt, "tjenestekall-*"),
+                Kibana.createUrl(
+                    String.format("\"%s\"", påminnelse.vedtaksperiodeId),
+                    påminnelse.endringstidspunkt,
+                    null,
+                    "tjenestekall-*"
+                ),
                 påminnelse.tilstand,
                 påminnelse.antallGangerPåminnet,
                 påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
-            ),
-            ":exclamation:"
-        )
-    }
-
-    private fun alertSlack(channel: String, username: String, text: String, icon: String) {
-        webhookUrl?.post(
-            objectMapper.writeValueAsString(
-                mapOf(
-                    "channel" to channel,
-                    "username" to username,
-                    "text" to text,
-                    "icon_emoji" to icon
-                )
-            )
+            ), ":exclamation:"
         ) ?: log.info("not alerting slack because URL is not set")
     }
-
-    private fun String.post(jsonPayload: String) {
-        try {
-            val connection = (URL(this).openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                connectTimeout = 1000
-                readTimeout = 1000
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                setRequestProperty("User-Agent", "navikt/spetakkel")
-
-                outputStream.use { it.bufferedWriter(Charsets.UTF_8).apply { write(jsonPayload); flush() } }
-            }
-
-            val responseCode = connection.responseCode
-
-            if (connection.responseCode in 200..299) {
-                log.info("response from slack: code=$responseCode body=${connection.inputStream.readText()}")
-            } else {
-                log.error("response from slack: code=$responseCode body=${connection.errorStream.readText()}")
-            }
-        } catch (err: IOException) {
-            log.error("feil ved posting til slack: {}", err)
-        }
-    }
-
-    private fun kibanaLink(
-        vedtaksperiodeId: String,
-        starttidspunkt: LocalDateTime,
-        index: String = "96e648c0-980a-11e9-830a-e17bbd64b4db"
-    ): String {
-        val urlFormat = "https://logs.adeo.no/app/kibana#/discover?_a=%s&_g=%s"
-        val searchQuery = "\"%s\""
-
-        val appState = mapOf(
-            "index" to index,
-            "query" to mapOf(
-                "language" to "lucene",
-                "query" to String.format(searchQuery, vedtaksperiodeId)
-            )
-        )
-
-        val globalState = mapOf(
-            "time" to mapOf(
-                "from" to starttidspunkt.format(ISO_LOCAL_DATE_TIME),
-                "mode" to "absolute",
-                "to" to "now"
-            )
-        )
-
-        return String.format(
-            urlFormat,
-            risonMapper.writeValueAsString(appState),
-            risonMapper.writeValueAsString(globalState)
-        )
-    }
-
-    private fun InputStream.readText() = use { it.bufferedReader().readText() }
 
     private class Påminnelse(private val packet: JsonMessage) {
         val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()

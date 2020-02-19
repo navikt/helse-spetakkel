@@ -48,7 +48,7 @@ internal class PåminnelseMonitorTest {
     @BeforeEach
     fun init() {
         client.resetRequests()
-        monitor = PåminnelseMonitor(rapid, webhookUrl)
+        monitor = PåminnelseMonitor(rapid, SlackClient(webhookUrl, "#test-channel", "a_bot_name"))
     }
 
     @Test
@@ -61,8 +61,8 @@ internal class PåminnelseMonitorTest {
     fun `lager alert ved påminnelse nr 2`() {
         rapid.sendTestMessage(påminnelse(2))
         verify(1, postRequestedFor(urlEqualTo(webhookPath))
-            .withRequestBody(matchingJsonPath("$.channel", equalTo("#team-bømlo-alerts")))
-            .withRequestBody(matchingJsonPath("$.username", equalTo("spetakkel")))
+            .withRequestBody(matchingJsonPath("$.channel", equalTo("#test-channel")))
+            .withRequestBody(matchingJsonPath("$.username", equalTo("a_bot_name")))
             .withRequestBody(matchingJsonPath("$.icon_emoji", equalTo(":exclamation:")))
             .withRequestBody(matchingJsonPath("$.text", matching("Vedtaksperiode .* sitter fast i tilstand .*")))
         )

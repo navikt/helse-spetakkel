@@ -10,11 +10,14 @@ import kotliquery.using
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
-import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.temporal.ChronoUnit
 import javax.sql.DataSource
+import kotlin.time.ExperimentalTime
+import kotlin.time.days
+import kotlin.time.hours
+import kotlin.time.minutes
 
 class TilstandsendringMonitor(
     rapidsConnection: RapidsConnection,
@@ -26,19 +29,6 @@ class TilstandsendringMonitor(
         private val objectMapper = jacksonObjectMapper()
             .registerModule(JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-
-        private val histogram = Histogram.build(
-            "vedtaksperiode_tilstand_latency_seconds",
-            "Antall sekunder en vedtaksperiode er i en tilstand"
-        )
-            .labelNames("tilstand")
-            .buckets(1.minute, 1.hours, 12.hours, 24.hours, 7.days, 30.days)
-            .register()
-
-        private val Int.minute get() = Duration.ofMinutes(this.toLong()).toDouble()
-        private val Int.hours get() = Duration.ofHours(this.toLong()).toDouble()
-        private val Int.days get() = Duration.ofDays(this.toLong()).toDouble()
-        private fun Duration.toDouble() = this.toSeconds().toDouble()
     }
 
     init {
@@ -69,8 +59,6 @@ class TilstandsendringMonitor(
 
         val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
 
-        histogram.labels(historiskTilstandsendring.tilstand)
-            .observe(diff.toDouble())
         log.info(
             "vedtaksperiode {} var i {} i {} ({}); gikk til {} {}",
             keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
@@ -85,7 +73,11 @@ class TilstandsendringMonitor(
 
     override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 
-    private fun resultat(historiskTilstandsendring: VedtaksperiodeTilstandDao.HistoriskTilstandsendring, tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring, diff: Long) = objectMapper.writeValueAsString(
+    private fun resultat(
+        historiskTilstandsendring: VedtaksperiodeTilstandDao.HistoriskTilstandsendring,
+        tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring,
+        diff: Long
+    ) = objectMapper.writeValueAsString(
         mapOf(
             "@event_name" to "vedtaksperiode_tid_i_tilstand",
             "aktørId" to tilstandsendring.aktørId,
@@ -93,6 +85,9 @@ class TilstandsendringMonitor(
             "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
             "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
             "tilstand" to tilstandsendring.forrigeTilstand,
+            "nyTilstand" to tilstandsendring.gjeldendeTilstand,
+            "starttid" to historiskTilstandsendring.endringstidspunkt,
+            "sluttid" to tilstandsendring.endringstidspunkt,
             "timeout" to historiskTilstandsendring.timeout,
             "tid_i_tilstand" to diff
         )
