@@ -3,7 +3,7 @@ package no.nav.helse.spetakkel
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.prometheus.client.Histogram
+import io.prometheus.client.Gauge
 import kotliquery.queryOf
 import kotliquery.sessionOf
 import kotliquery.using
@@ -14,10 +14,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.temporal.ChronoUnit
 import javax.sql.DataSource
-import kotlin.time.ExperimentalTime
-import kotlin.time.days
-import kotlin.time.hours
-import kotlin.time.minutes
 
 class TilstandsendringMonitor(
     rapidsConnection: RapidsConnection,
@@ -29,6 +25,10 @@ class TilstandsendringMonitor(
         private val objectMapper = jacksonObjectMapper()
             .registerModule(JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+
+        private val tilstanderGauge = Gauge.build("vedtaksperiode_gjeldende_tilstander", "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand (timeout=0)")
+            .labelNames("tilstand")
+            .register()
     }
 
     init {
@@ -46,6 +46,8 @@ class TilstandsendringMonitor(
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        refreshTilstandGauge()
+
         val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
 
         val historiskTilstandsendring =
@@ -93,7 +95,24 @@ class TilstandsendringMonitor(
         )
     )
 
+    private var lastRefreshTime = LocalDateTime.MIN
+    private fun refreshTilstandGauge() {
+        if (lastRefreshTime > LocalDateTime.now().minusSeconds(30)) return
+        log.info("Refreshing tilstand gauge")
+        vedtaksperiodeTilstandDao.hentGjeldendeTilstander().forEach { (tilstand, count) ->
+            tilstanderGauge.labels(tilstand).set(count.toDouble())
+        }
+    }
+
     class VedtaksperiodeTilstandDao(private val dataSource: DataSource) {
+
+        fun hentGjeldendeTilstander(): Map<String, Long> {
+            return using(sessionOf(dataSource)) { session ->
+                session.run(queryOf("SELECT tilstand, COUNT(1) FROM vedtaksperiode_tilstand GROUP BY tilstand").map {
+                    it.string(1) to it.long(2)
+                }.asList)
+            }.associate { it }
+        }
 
         fun hentGjeldendeTilstand(vedtaksperiodeId: String): HistoriskTilstandsendring? {
             return using(sessionOf(dataSource)) { session ->
