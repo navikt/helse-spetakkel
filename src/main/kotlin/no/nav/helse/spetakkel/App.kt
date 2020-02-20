@@ -28,5 +28,6 @@ fun main() {
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSourceBuilder.getDataSource()))
         TidITilstandMonitor(this, slackClient)
         VedtaksperiodePåminnetMonitor(this)
+        BehovMonitor(this)
     }.start()
 }
