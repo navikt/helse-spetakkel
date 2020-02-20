@@ -3,6 +3,7 @@ package no.nav.helse.spetakkel
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.prometheus.client.Counter
 import io.prometheus.client.Gauge
 import kotliquery.queryOf
 import kotliquery.sessionOf
@@ -26,6 +27,13 @@ class TilstandsendringMonitor(
             .registerModule(JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
+        private val tilstandCounter = Counter.build(
+            "vedtaksperiode_tilstander_totals",
+            "Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra"
+        )
+            .labelNames("forrigeTilstand", "tilstand", "hendelse")
+            .register()
+
         private val tilstanderGauge = Gauge.build("vedtaksperiode_gjeldende_tilstander", "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand (timeout=0)")
             .labelNames("tilstand")
             .register()
@@ -41,14 +49,14 @@ class TilstandsendringMonitor(
             validate { it.requireKey("forrigeTilstand") }
             validate { it.requireKey("gjeldendeTilstand") }
             validate { it.requireKey("endringstidspunkt") }
+            validate { it.requireKey("på_grunn_av") }
             validate { it.requireKey("timeout") }
         }.register(this)
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        refreshTilstandGauge()
-
         val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
+        refreshCounters(tilstandsendring)
 
         val historiskTilstandsendring =
             vedtaksperiodeTilstandDao.hentGjeldendeTilstand(tilstandsendring.vedtaksperiodeId)
@@ -96,6 +104,17 @@ class TilstandsendringMonitor(
     )
 
     private var lastRefreshTime = LocalDateTime.MIN
+
+    private fun refreshCounters(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
+        refreshTilstandGauge()
+
+        tilstandCounter.labels(
+            tilstandsendring.forrigeTilstand,
+            tilstandsendring.gjeldendeTilstand,
+            tilstandsendring.påGrunnAv
+        ).inc()
+
+    }
     private fun refreshTilstandGauge() {
         val now = LocalDateTime.now()
         if (lastRefreshTime > now.minusSeconds(30)) return
@@ -190,6 +209,7 @@ class TilstandsendringMonitor(
             val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
+            val påGrunnAv get() = packet["på_grunn_av"].asText()
             val timeout: Long get() = packet["timeout"].asLong()
         }
     }
