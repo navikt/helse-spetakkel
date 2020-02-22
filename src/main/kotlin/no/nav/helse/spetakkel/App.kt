@@ -24,6 +24,7 @@ fun main() {
 
     RapidApplication.create(env).apply {
         TilstandsendringsRiver(this)
+        EventMonitor(this)
         PåminnelseMonitor(this, slackClient)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSourceBuilder.getDataSource()))
         TidITilstandMonitor(this, slackClient)
