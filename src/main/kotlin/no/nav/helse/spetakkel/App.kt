@@ -30,5 +30,6 @@ fun main() {
         TidITilstandMonitor(this, slackClient)
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
+        UtbetalingMonitor(this, slackClient)
     }.start()
 }
