@@ -20,9 +20,10 @@ internal class SlackThreadDao(private val dataSource: DataSource) {
             using(sessionOf(dataSource)) { session ->
                 session.run(
                     queryOf(
-                        "INSERT INTO slack_thread (vedtaksperiode_id, thread_ts) VALUES (?, ?)",
+                        "INSERT INTO slack_thread (vedtaksperiode_id, thread_ts, opprettet) VALUES (?, ?, ?)",
                         vedtaksperiodeId,
-                        threadTs
+                        threadTs,
+                        LocalDateTime.now()
                     ).asExecute
                 )
             }
