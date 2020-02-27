@@ -22,6 +22,7 @@ class TilstandsendringMonitor(
 ) : River.PacketListener {
 
     private companion object {
+        private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
         private val log = LoggerFactory.getLogger(TilstandsendringMonitor::class.java)
         private val objectMapper = jacksonObjectMapper()
             .registerModule(JavaTimeModule())
@@ -34,7 +35,10 @@ class TilstandsendringMonitor(
             .labelNames("forrigeTilstand", "tilstand", "hendelse")
             .register()
 
-        private val tilstanderGauge = Gauge.build("vedtaksperiode_gjeldende_tilstander", "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand (timeout=0)")
+        private val tilstanderGauge = Gauge.build(
+            "vedtaksperiode_gjeldende_tilstander",
+            "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand (timeout=0)"
+        )
             .labelNames("tilstand")
             .register()
     }
@@ -56,6 +60,13 @@ class TilstandsendringMonitor(
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
+        sikkerLogg.info(
+            "{} endret fra {} til {}:\n{}",
+            tilstandsendring.vedtaksperiodeId,
+            tilstandsendring.forrigeTilstand,
+            tilstandsendring.gjeldendeTilstand,
+            packet.toJson()
+        )
         refreshCounters(tilstandsendring)
 
         val historiskTilstandsendring =
@@ -115,6 +126,7 @@ class TilstandsendringMonitor(
         ).inc()
 
     }
+
     private fun refreshTilstandGauge() {
         val now = LocalDateTime.now()
         if (lastRefreshTime > now.minusSeconds(30)) return
