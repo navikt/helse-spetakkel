@@ -21,7 +21,15 @@ internal fun SlackClient?.postMessage(slackThreadDao: SlackThreadDao, vedtaksper
     }
 
     this.postMessage(message, threadTs, broadcast)?.also {
-        slackThreadDao.lagreThreadTs(vedtaksperiodeId, it)
+        if (threadTs == null) {
+            slackThreadDao.lagreThreadTs(vedtaksperiodeId, it)
+        }
+    } ?: threadTs?.let {
+        // if threadTs is !null, and postMessage didn't return a threadTs; assume there's an error
+        // with the provided threadTs and retry without.
+        this.postMessage(message)?.also {
+            slackThreadDao.lagreThreadTs(vedtaksperiodeId, it)
+        }
     }
 }
 
