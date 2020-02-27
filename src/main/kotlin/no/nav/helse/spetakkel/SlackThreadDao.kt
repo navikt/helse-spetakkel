@@ -10,7 +10,7 @@ internal class SlackThreadDao(private val dataSource: DataSource) {
 
         fun hentThreadTs(vedtaksperiodeId: String): Pair<String, LocalDateTime>? {
             return using(sessionOf(dataSource)) { session ->
-                session.run(queryOf("SELECT thread_ts, opprettet FROM slack_thread WHERE vedtaksperiodeId = ? ORDER BY opprettet DESC LIMIT 1").map {
+                session.run(queryOf("SELECT thread_ts, opprettet FROM slack_thread WHERE vedtaksperiodeId = ? ORDER BY opprettet DESC LIMIT 1", vedtaksperiodeId).map {
                     it.string(1) to it.localDateTime(2)
                 }.asSingle)
             }
