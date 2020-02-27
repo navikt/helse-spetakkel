@@ -36,6 +36,7 @@ internal fun SlackClient?.postMessage(slackThreadDao: SlackThreadDao, vedtaksper
 internal class SlackClient(private val accessToken: String, private val channel: String) {
 
     private companion object {
+        private val tjenestekall = LoggerFactory.getLogger("tjenestekall")
         private val log = LoggerFactory.getLogger(SlackClient::class.java)
         private val objectMapper = jacksonObjectMapper()
             .registerModule(JavaTimeModule())
@@ -74,12 +75,14 @@ internal class SlackClient(private val accessToken: String, private val channel:
             val responseCode = connection.responseCode
 
             if (connection.responseCode !in 200..299) {
-                log.error("response from slack: code=$responseCode body=${connection.errorStream.readText()}")
+                log.error("response from slack: code=$responseCode")
+                tjenestekall.error("response from slack: code=$responseCode body=${connection.errorStream.readText()}")
                 return null
             }
 
             val responseBody = connection.inputStream.readText()
-            log.info("response from slack: code=$responseCode body=$responseBody")
+            log.info("response from slack: code=$responseCode")
+            tjenestekall.info("response from slack: code=$responseCode body=$responseBody")
 
             return responseBody
         } catch (err: IOException) {
