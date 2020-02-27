@@ -8,12 +8,24 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDateTime
 
-internal class SlackClient(
-    private val webhookUrl: String,
-    private val defaultChannel: String? = null,
-    private val defaultUsername: String? = null
-) {
+internal fun SlackClient?.postMessage(slackThreadDao: SlackThreadDao, vedtaksperiodeId: String, message: String) {
+    if (this == null) return
+
+    var threadTs: String? = null
+    var broadcast = false
+    slackThreadDao.hentThreadTs(vedtaksperiodeId)?.also {
+        threadTs = it.first
+        broadcast = it.second.isBefore(LocalDateTime.now().minusDays(2))
+    }
+
+    this.postMessage(message, threadTs, broadcast)?.also {
+        slackThreadDao.lagreThreadTs(vedtaksperiodeId, it)
+    }
+}
+
+internal class SlackClient(private val accessToken: String, private val channel: String) {
 
     private companion object {
         private val log = LoggerFactory.getLogger(SlackClient::class.java)
@@ -22,21 +34,29 @@ internal class SlackClient(
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     }
 
-    fun postMessage(text: String, icon: String? = null) {
-        webhookUrl.post(objectMapper.writeValueAsString(mutableMapOf("text" to text).apply {
-            icon?.let { this.put("icon_emoji", it) }
-            defaultChannel?.let { this.put("channel", it) }
-            defaultUsername?.let { this.put("username", it) }
-        }))
+    fun postMessage(text: String, threadTs: String? = null, broadcast: Boolean = false): String? {
+        return "https://slack.com/api/chat.postMessage".post(objectMapper.writeValueAsString(mutableMapOf<String, Any>(
+            "channel" to channel,
+            "text" to text
+        ).apply {
+            threadTs?.also {
+                put("thread_ts", it)
+                put("reply_broadcast", broadcast)
+            }
+        }))?.let {
+            objectMapper.readTree(it)["ts"]?.asText()
+        }
     }
 
-    private fun String.post(jsonPayload: String) {
+    private fun String.post(jsonPayload: String): String? {
+        var connection: HttpURLConnection? = null
         try {
-            val connection = (URL(this).openConnection() as HttpURLConnection).apply {
+            connection = (URL(this).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 1000
                 readTimeout = 1000
                 doOutput = true
+                setRequestProperty("Authorization", "Bearer $accessToken")
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("User-Agent", "navikt/spetakkel")
 
@@ -46,13 +66,21 @@ internal class SlackClient(
             val responseCode = connection.responseCode
 
             if (connection.responseCode !in 200..299) {
-                return log.error("response from slack: code=$responseCode body=${connection.errorStream.readText()}")
+                log.error("response from slack: code=$responseCode body=${connection.errorStream.readText()}")
+                return null
             }
 
-            log.info("response from slack: code=$responseCode body=${connection.inputStream.readText()}")
+            val responseBody = connection.inputStream.readText()
+            log.info("response from slack: code=$responseCode body=$responseBody")
+
+            return responseBody
         } catch (err: IOException) {
             log.error("feil ved posting til slack: {}", err)
+        } finally {
+            connection?.disconnect()
         }
+
+        return null
     }
 
     private fun InputStream.readText() = use { it.bufferedReader().readText() }

@@ -32,9 +32,6 @@ dependencies {
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
 
     testImplementation("com.opentable.components:otj-pg-embedded:0.13.3")
-    testImplementation("com.github.tomakehurst:wiremock:$wireMockVersion") {
-        exclude(group = "junit")
-    }
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")

@@ -14,20 +14,22 @@ fun main() {
     val dataSourceBuilder = DataSourceBuilder(env)
     dataSourceBuilder.migrate()
 
-    val slackClient = env["SLACK_WEBHOOK_URL"]?.let {
+    val slackClient = env["SLACK_ACCESS_TOKEN"]?.let {
         SlackClient(
-            webhookUrl = it,
-            defaultChannel = "#team-bømlo-alerts",
-            defaultUsername = "spetakkel"
+            accessToken = it,
+            channel = env.getValue("SLACK_CHANNEL_ID")
         )
     }
+
+    val dataSource = dataSourceBuilder.getDataSource()
+    val slackThreadDao = SlackThreadDao(dataSource)
 
     RapidApplication.create(env).apply {
         TilstandsendringsRiver(this)
         EventMonitor(this)
-        PåminnelseMonitor(this, slackClient)
-        TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSourceBuilder.getDataSource()))
-        TidITilstandMonitor(this, slackClient)
+        PåminnelseMonitor(this, slackClient, slackThreadDao)
+        TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
+        TidITilstandMonitor(this, slackClient, slackThreadDao)
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
         UtbetalingMonitor(this, slackClient)

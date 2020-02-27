@@ -7,7 +7,8 @@ import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
 internal class PåminnelseMonitor(
     rapidsConnection: RapidsConnection,
-    private val slackClient: SlackClient?
+    private val slackClient: SlackClient?,
+    private val slackThreadDao: SlackThreadDao
 ) : River.PacketListener {
 
     private companion object {
@@ -41,8 +42,8 @@ internal class PåminnelseMonitor(
             keyValue("tilstandsendringstidspunkt", påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME))
         )
 
-        slackClient?.postMessage(
-            String.format(
+        slackClient.postMessage(
+            slackThreadDao, påminnelse.vedtaksperiodeId, String.format(
                 "Vedtaksperiode <%s|%s> (<%s|tjenestekall>) sitter fast i tilstand %s. Den er forsøkt påminnet %d ganger siden %s",
                 Kibana.createUrl(String.format("\"%s\"", påminnelse.vedtaksperiodeId), påminnelse.endringstidspunkt),
                 påminnelse.vedtaksperiodeId,
@@ -55,8 +56,8 @@ internal class PåminnelseMonitor(
                 påminnelse.tilstand,
                 påminnelse.antallGangerPåminnet,
                 påminnelse.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
-            ), ":exclamation:"
-        ) ?: log.info("not alerting slack because URL is not set")
+            )
+        )
     }
 
     private class Påminnelse(private val packet: JsonMessage) {

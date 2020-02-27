@@ -38,7 +38,7 @@ internal class UtbetalingMonitor(
                     null,
                     "tjenestekall-*"
                 )
-            ), ":money_with_wings: "
+            )
         )
     }
 
@@ -54,7 +54,7 @@ internal class UtbetalingMonitor(
                     null,
                     "tjenestekall-*"
                 )
-            ), ":rotating_light:"
+            )
         )
     }
 

@@ -14,7 +14,8 @@ import kotlin.time.minutes
 @ExperimentalTime
 internal class TidITilstandMonitor(
     rapidsConnection: RapidsConnection,
-    private val slackClient: SlackClient?
+    private val slackClient: SlackClient?,
+    private val slackThreadDao: SlackThreadDao
 ) : River.PacketListener {
 
     private companion object {
@@ -67,8 +68,8 @@ internal class TidITilstandMonitor(
             humanReadableTime(tidITilstand.forventetTidITilstand)
         )
 
-        slackClient?.postMessage(
-            String.format(
+        slackClient.postMessage(
+            slackThreadDao, tidITilstand.vedtaksperiodeId, String.format(
                 "Vedtaksperiode <%s|%s> (<%s|tjenestekall>) kom seg videre fra %s til %s etter %s siden %s. Forventet tid i tilstand var %s",
                 Kibana.createUrl(String.format("\"%s\"", tidITilstand.vedtaksperiodeId), tidITilstand.starttid),
                 tidITilstand.vedtaksperiodeId,
@@ -83,8 +84,8 @@ internal class TidITilstandMonitor(
                 humanReadableTime(tidITilstand.tidITilstand),
                 tidITilstand.starttid.format(ISO_LOCAL_DATE_TIME),
                 humanReadableTime(tidITilstand.forventetTidITilstand)
-            ), ":face_with_raised_eyebrow:"
-        ) ?: log.info("not alerting slack because URL is not set")
+            )
+        )
     }
 
     override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
