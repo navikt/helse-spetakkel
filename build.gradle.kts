@@ -22,7 +22,7 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("no.nav.helse:rapids-rivers:1.931f720")
+    implementation("no.nav.helse:rapids-rivers:1.6fbf5c8")
 
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     implementation("com.zaxxer:HikariCP:$hikariVersion")
