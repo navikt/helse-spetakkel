@@ -68,6 +68,8 @@ internal class TidITilstandMonitor(
             humanReadableTime(tidITilstand.forventetTidITilstand)
         )
 
+        if (tidITilstand.tilstand == "AVVENTER_GODKJENNING" && tidITilstand.nyTilstand == "TIL_INFOTRYGD") return
+
         slackClient.postMessage(
             slackThreadDao, tidITilstand.vedtaksperiodeId, String.format(
                 "Vedtaksperiode <%s|%s> (<%s|tjenestekall>) kom seg videre fra %s til %s etter %s siden %s. Forventet tid i tilstand var %s",
