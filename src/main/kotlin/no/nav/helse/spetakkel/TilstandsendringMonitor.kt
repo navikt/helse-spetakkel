@@ -41,6 +41,9 @@ class TilstandsendringMonitor(
         )
             .labelNames("tilstand")
             .register()
+            .apply {
+                TilstandType.values().forEach { this.labels(it.name).set(0.0) }
+            }
     }
 
     init {
@@ -131,6 +134,7 @@ class TilstandsendringMonitor(
         val now = LocalDateTime.now()
         if (lastRefreshTime > now.minusSeconds(30)) return
         log.info("Refreshing tilstand gauge")
+        TilstandType.values().forEach { tilstanderGauge.labels(it.name).set(0.0) }
         vedtaksperiodeTilstandDao.hentGjeldendeTilstander().forEach { (tilstand, count) ->
             tilstanderGauge.labels(tilstand).set(count.toDouble())
         }
@@ -224,5 +228,22 @@ class TilstandsendringMonitor(
             val påGrunnAv get() = packet["på_grunn_av"].asText()
             val timeout: Long get() = packet["timeout"].asLong()
         }
+    }
+
+    private enum class TilstandType {
+        START,
+        MOTTATT_SYKMELDING,
+        AVVENTER_SØKNAD,
+        AVVENTER_TIDLIGERE_PERIODE_ELLER_INNTEKTSMELDING,
+        AVVENTER_TIDLIGERE_PERIODE,
+        UNDERSØKER_HISTORIKK,
+        AVVENTER_INNTEKTSMELDING,
+        AVVENTER_VILKÅRSPRØVING,
+        AVVENTER_HISTORIKK,
+        AVVENTER_GODKJENNING,
+        TIL_UTBETALING,
+        TIL_INFOTRYGD,
+        UTBETALT,
+        UTBETALING_FEILET
     }
 }
