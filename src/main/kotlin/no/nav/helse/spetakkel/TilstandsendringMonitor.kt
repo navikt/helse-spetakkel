@@ -243,7 +243,7 @@ class TilstandsendringMonitor(
         AVVENTER_GODKJENNING,
         TIL_UTBETALING,
         TIL_INFOTRYGD,
-        UTBETALT,
+        AVSLUTTET,
         UTBETALING_FEILET
     }
 }
