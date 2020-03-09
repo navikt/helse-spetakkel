@@ -22,7 +22,7 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("no.nav.helse:rapids-rivers:1.6fbf5c8")
+    implementation("no.nav.helse:rapids-and-rivers:1.56d085f")
 
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     implementation("com.zaxxer:HikariCP:$hikariVersion")
@@ -41,7 +41,7 @@ dependencies {
 repositories {
     mavenCentral()
     maven {
-        url = uri("https://maven.pkg.github.com/navikt/helse-spleis")
+        url = uri("https://maven.pkg.github.com/navikt/rapids-and-rivers")
         credentials {
             username = githubUser
             password = githubPassword

@@ -1,18 +1,13 @@
 package no.nav.helse.spetakkel
 
-import io.ktor.util.KtorExperimentalAPI
 import no.nav.helse.rapids_rivers.RapidApplication
+import no.nav.helse.rapids_rivers.RapidsConnection
 import kotlin.time.ExperimentalTime
 
 @ExperimentalTime
-@KtorExperimentalAPI
 fun main() {
-    val env = System.getenv().toMutableMap()
-    env.putIfAbsent("KAFKA_CONSUMER_GROUP_ID", "spetakkel-v1")
-    env.putIfAbsent("KAFKA_RAPID_TOPIC", "helse-rapid-v1")
-
+    val env = System.getenv()
     val dataSourceBuilder = DataSourceBuilder(env)
-    dataSourceBuilder.migrate()
 
     val slackClient = env["SLACK_ACCESS_TOKEN"]?.let {
         SlackClient(
@@ -33,5 +28,13 @@ fun main() {
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
         UtbetalingMonitor(this, slackClient)
+    }.apply {
+        register(object : RapidsConnection.StatusListener {
+            override fun onStartup(rapidsConnection: RapidsConnection) {
+                dataSourceBuilder.migrate()
+            }
+
+            override fun onShutdown(rapidsConnection: RapidsConnection) {}
+        })
     }.start()
 }
