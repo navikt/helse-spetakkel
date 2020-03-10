@@ -32,9 +32,8 @@ fun main() {
         register(object : RapidsConnection.StatusListener {
             override fun onStartup(rapidsConnection: RapidsConnection) {
                 dataSourceBuilder.migrate()
-            }
 
-            override fun onShutdown(rapidsConnection: RapidsConnection) {}
+            }
         })
     }.start()
 }
