@@ -9,25 +9,15 @@ fun main() {
     val env = System.getenv()
     val dataSourceBuilder = DataSourceBuilder(env)
 
-    val slackClient = env["SLACK_ACCESS_TOKEN"]?.let {
-        SlackClient(
-            accessToken = it,
-            channel = env.getValue("SLACK_CHANNEL_ID")
-        )
-    }
-
     val dataSource = dataSourceBuilder.getDataSource()
-    val slackThreadDao = SlackThreadDao(dataSource)
 
     RapidApplication.create(env).apply {
         TilstandsendringsRiver(this)
         EventMonitor(this)
-        PåminnelseMonitor(this, slackClient, slackThreadDao)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
-        TidITilstandMonitor(this, slackClient, slackThreadDao)
+        TidITilstandMonitor(this)
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
-        UtbetalingMonitor(this, slackClient)
     }.apply {
         register(object : RapidsConnection.StatusListener {
             override fun onStartup(rapidsConnection: RapidsConnection) {

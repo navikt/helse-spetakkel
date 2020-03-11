@@ -34,8 +34,6 @@ spec:
   vault:
     enabled: true
     paths:
-      - mountPath: /var/run/secrets/nais.io/vault
-        kvPath: /kv/prod/fss/spetakkel/default
       - mountPath: /var/run/secrets/nais.io/service_user
         kvPath: /serviceuser/data/prod/srvspetakkel
   env:
