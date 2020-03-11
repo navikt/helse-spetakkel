@@ -1,7 +1,7 @@
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
-  name: spetakkel
+  name: {{app}}
   namespace: default
   labels:
     team: {{team}}
@@ -35,19 +35,20 @@ spec:
     enabled: true
     paths:
       - mountPath: /var/run/secrets/nais.io/service_user
-        kvPath: /serviceuser/data/prod/srvspetakkel
+        kvPath: /serviceuser/data/dev/srvspetakkel
   env:
   - name: KAFKA_BOOTSTRAP_SERVERS
-    value: a01apvl00145.adeo.no:8443,a01apvl00146.adeo.no:8443,a01apvl00147.adeo.no:8443,a01apvl00148.adeo.no:8443,a01apvl00149.adeo.no:8443,a01apvl00150.adeo.no:8443
+    value: b27apvl00045.preprod.local:8443,b27apvl00046.preprod.local:8443,b27apvl00047.preprod.local:8443
   - name: KAFKA_CONSUMER_GROUP_ID
     value: spetakkel-v1
   - name: KAFKA_RAPID_TOPIC
     value: helse-rapid-v1
   - name: DATABASE_HOST
-    value: a01dbvl011.adeo.no
+    value: b27dbvl009.preprod.local
   - name: DATABASE_PORT
     value: "5432"
   - name: DATABASE_NAME
     value: spetakkel
   - name: VAULT_MOUNTPATH
-    value: postgresql/prod-fss/
+    value: postgresql/preprod-fss/
+
