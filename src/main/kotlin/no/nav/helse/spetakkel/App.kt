@@ -12,7 +12,6 @@ fun main() {
     val dataSource = dataSourceBuilder.getDataSource()
 
     RapidApplication.create(env).apply {
-        TilstandsendringsRiver(this)
         EventMonitor(this)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
         TidITilstandMonitor(this)
@@ -22,7 +21,6 @@ fun main() {
         register(object : RapidsConnection.StatusListener {
             override fun onStartup(rapidsConnection: RapidsConnection) {
                 dataSourceBuilder.migrate()
-
             }
         })
     }.start()
