@@ -11,7 +11,7 @@ fun main() {
 
     val dataSource = dataSourceBuilder.getDataSource()
 
-    RapidApplication.create(env) { _, rapid -> rapid.seekToBeginning() }.apply {
+    RapidApplication.create(env).apply {
         EventMonitor(this)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
         TidITilstandMonitor(this)
