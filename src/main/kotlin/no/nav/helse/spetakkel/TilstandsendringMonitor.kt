@@ -187,24 +187,15 @@ class TilstandsendringMonitor(
 
         fun oppdaterTilstandsendring(tilstandsendring: Tilstandsendring) {
             using(sessionOf(dataSource)) { session ->
-                if (tilstandsendring.timeout == 0L) {
-                    session.run(
-                        queryOf(
-                            "DELETE FROM vedtaksperiode_tilstand WHERE vedtaksperiode_id=?",
-                            tilstandsendring.vedtaksperiodeId
-                        ).asExecute
-                    )
-                } else {
-                    session.run(
-                        queryOf(
-                            "UPDATE vedtaksperiode_tilstand SET tilstand=?, timeout = ?, endringstidspunkt=? WHERE vedtaksperiode_id=?",
-                            tilstandsendring.gjeldendeTilstand,
-                            tilstandsendring.timeout,
-                            tilstandsendring.endringstidspunkt,
-                            tilstandsendring.vedtaksperiodeId
-                        ).asExecute
-                    )
-                }
+                session.run(
+                    queryOf(
+                        "UPDATE vedtaksperiode_tilstand SET tilstand=?, timeout = ?, endringstidspunkt=? WHERE vedtaksperiode_id=?",
+                        tilstandsendring.gjeldendeTilstand,
+                        tilstandsendring.timeout,
+                        tilstandsendring.endringstidspunkt,
+                        tilstandsendring.vedtaksperiodeId
+                    ).asExecute
+                )
             }
         }
 
