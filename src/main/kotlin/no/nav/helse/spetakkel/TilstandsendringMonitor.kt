@@ -224,9 +224,11 @@ class TilstandsendringMonitor(
     private enum class TilstandType {
         AVVENTER_HISTORIKK,
         AVVENTER_GODKJENNING,
+        AVVENTER_SIMULERING,
         TIL_UTBETALING,
         TIL_INFOTRYGD,
         AVSLUTTET,
+        AVSLUTTET_UTEN_UTBETALING,
         UTBETALING_FEILET,
         START,
         MOTTATT_SYKMELDING_FERDIG_FORLENGELSE,
