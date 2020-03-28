@@ -155,14 +155,14 @@ class TilstandsendringMonitor(
             return using(sessionOf(dataSource)) { session ->
                 session.run(
                     queryOf(
-                        "SELECT vedtaksperiode_id, tilstand, timeout, endringstidspunkt FROM vedtaksperiode_tilstand " +
+                        "SELECT vedtaksperiode_id, tilstand, timeout, endringstidspunkt, endringstidspunkt_nanos FROM vedtaksperiode_tilstand " +
                                 "WHERE vedtaksperiode_id = ? " +
                                 "LIMIT 1", vedtaksperiodeId
                     ).map {
                         HistoriskTilstandsendring(
                             tilstand = it.string("tilstand"),
                             timeout = it.long("timeout"),
-                            endringstidspunkt = it.localDateTime("endringstidspunkt")
+                            endringstidspunkt = it.localDateTime("endringstidspunkt").withNano(it.int("endringstidspunkt_nanos"))
                         )
                     }.asSingle
                 )
@@ -175,11 +175,12 @@ class TilstandsendringMonitor(
 
                 session.run(
                     queryOf(
-                        "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, timeout, endringstidspunkt) VALUES (?, ?, ?, ?)",
+                        "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, timeout, endringstidspunkt, endringstidspunkt_nanos) VALUES (?, ?, ?, ?, ?)",
                         tilstandsendring.vedtaksperiodeId,
                         tilstandsendring.gjeldendeTilstand,
                         tilstandsendring.timeout,
-                        tilstandsendring.endringstidspunkt
+                        tilstandsendring.endringstidspunkt,
+                        tilstandsendring.endringstidspunkt.nano
                     ).asExecute
                 )
             }
@@ -189,10 +190,11 @@ class TilstandsendringMonitor(
             using(sessionOf(dataSource)) { session ->
                 session.run(
                     queryOf(
-                        "UPDATE vedtaksperiode_tilstand SET tilstand=?, timeout = ?, endringstidspunkt=? WHERE vedtaksperiode_id=?",
+                        "UPDATE vedtaksperiode_tilstand SET tilstand=?, timeout = ?, endringstidspunkt=?, endringstidspunkt_nanos=? WHERE vedtaksperiode_id=?",
                         tilstandsendring.gjeldendeTilstand,
                         tilstandsendring.timeout,
                         tilstandsendring.endringstidspunkt,
+                        tilstandsendring.endringstidspunkt.nano,
                         tilstandsendring.vedtaksperiodeId
                     ).asExecute
                 )
