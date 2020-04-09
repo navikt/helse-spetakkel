@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.prometheus.client.Counter
 import io.prometheus.client.Gauge
+import kotliquery.TransactionalSession
 import kotliquery.queryOf
 import kotliquery.sessionOf
 import kotliquery.using
@@ -73,13 +74,7 @@ class TilstandsendringMonitor(
         refreshCounters(tilstandsendring)
 
         val historiskTilstandsendring =
-            vedtaksperiodeTilstandDao.hentGjeldendeTilstand(tilstandsendring.vedtaksperiodeId)
-                ?: return vedtaksperiodeTilstandDao.lagreTilstandsendring(tilstandsendring)
-
-        // if the one we have is newer, discard current
-        if (historiskTilstandsendring.endringstidspunkt > tilstandsendring.endringstidspunkt) return
-
-        vedtaksperiodeTilstandDao.oppdaterTilstandsendring(tilstandsendring)
+            vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(tilstandsendring) ?: return
 
         val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
 
@@ -143,6 +138,35 @@ class TilstandsendringMonitor(
 
     class VedtaksperiodeTilstandDao(private val dataSource: DataSource) {
 
+        fun lagreEllerOppdaterTilstand(tilstandsendring: Tilstandsendring): HistoriskTilstandsendring? {
+            return using(sessionOf(dataSource)) { session ->
+                session.transaction { tx ->
+                    hentGjeldendeTilstand(tx, tilstandsendring.vedtaksperiodeId).also {
+                        tx.run(
+                            queryOf(
+                                "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, timeout, " +
+                                        "endringstidspunkt, endringstidspunkt_nanos) " +
+                                        "VALUES (?, ?, ?, ?, ?) " +
+                                        "ON CONFLICT (vedtaksperiode_id) DO " +
+                                        "UPDATE SET " +
+                                        "tilstand=EXCLUDED.tilstand, " +
+                                        "timeout = EXCLUDED.timeout, " +
+                                        "endringstidspunkt=EXCLUDED.endringstidspunkt, " +
+                                        "endringstidspunkt_nanos=EXCLUDED.endringstidspunkt_nanos " +
+                                        "WHERE (vedtaksperiode_tilstand.endringstidspunkt < EXCLUDED.endringstidspunkt) " +
+                                        "   OR (vedtaksperiode_tilstand.endringstidspunkt = EXCLUDED.endringstidspunkt AND vedtaksperiode_tilstand.endringstidspunkt_nanos < EXCLUDED.endringstidspunkt_nanos)",
+                                tilstandsendring.vedtaksperiodeId,
+                                tilstandsendring.gjeldendeTilstand,
+                                tilstandsendring.timeout,
+                                tilstandsendring.endringstidspunkt,
+                                tilstandsendring.endringstidspunkt.nano
+                            ).asExecute
+                        )
+                    }
+                }
+            }
+        }
+
         fun hentGjeldendeTilstander(): Map<String, Long> {
             return using(sessionOf(dataSource)) { session ->
                 session.run(queryOf("SELECT tilstand, COUNT(1) FROM vedtaksperiode_tilstand GROUP BY tilstand").map {
@@ -151,54 +175,20 @@ class TilstandsendringMonitor(
             }.associate { it }
         }
 
-        fun hentGjeldendeTilstand(vedtaksperiodeId: String): HistoriskTilstandsendring? {
-            return using(sessionOf(dataSource)) { session ->
-                session.run(
-                    queryOf(
-                        "SELECT vedtaksperiode_id, tilstand, timeout, endringstidspunkt, endringstidspunkt_nanos FROM vedtaksperiode_tilstand " +
-                                "WHERE vedtaksperiode_id = ? " +
-                                "LIMIT 1", vedtaksperiodeId
-                    ).map {
-                        HistoriskTilstandsendring(
-                            tilstand = it.string("tilstand"),
-                            timeout = it.long("timeout"),
-                            endringstidspunkt = it.localDateTime("endringstidspunkt").withNano(it.int("endringstidspunkt_nanos"))
-                        )
-                    }.asSingle
-                )
-            }
-        }
-
-        fun lagreTilstandsendring(tilstandsendring: Tilstandsendring) {
-            using(sessionOf(dataSource)) { session ->
-                if (tilstandsendring.timeout == 0L) return@using
-
-                session.run(
-                    queryOf(
-                        "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, timeout, endringstidspunkt, endringstidspunkt_nanos) VALUES (?, ?, ?, ?, ?)",
-                        tilstandsendring.vedtaksperiodeId,
-                        tilstandsendring.gjeldendeTilstand,
-                        tilstandsendring.timeout,
-                        tilstandsendring.endringstidspunkt,
-                        tilstandsendring.endringstidspunkt.nano
-                    ).asExecute
-                )
-            }
-        }
-
-        fun oppdaterTilstandsendring(tilstandsendring: Tilstandsendring) {
-            using(sessionOf(dataSource)) { session ->
-                session.run(
-                    queryOf(
-                        "UPDATE vedtaksperiode_tilstand SET tilstand=?, timeout = ?, endringstidspunkt=?, endringstidspunkt_nanos=? WHERE vedtaksperiode_id=?",
-                        tilstandsendring.gjeldendeTilstand,
-                        tilstandsendring.timeout,
-                        tilstandsendring.endringstidspunkt,
-                        tilstandsendring.endringstidspunkt.nano,
-                        tilstandsendring.vedtaksperiodeId
-                    ).asExecute
-                )
-            }
+        private fun hentGjeldendeTilstand(session: TransactionalSession, vedtaksperiodeId: String): HistoriskTilstandsendring? {
+            return session.run(
+                queryOf(
+                    "SELECT vedtaksperiode_id, tilstand, timeout, endringstidspunkt, endringstidspunkt_nanos FROM vedtaksperiode_tilstand " +
+                            "WHERE vedtaksperiode_id = ? " +
+                            "LIMIT 1", vedtaksperiodeId
+                ).map {
+                    HistoriskTilstandsendring(
+                        tilstand = it.string("tilstand"),
+                        timeout = it.long("timeout"),
+                        endringstidspunkt = it.localDateTime("endringstidspunkt").withNano(it.int("endringstidspunkt_nanos"))
+                    )
+                }.asSingle
+            )
         }
 
         class HistoriskTilstandsendring(val tilstand: String, val timeout: Long, val endringstidspunkt: LocalDateTime) {
