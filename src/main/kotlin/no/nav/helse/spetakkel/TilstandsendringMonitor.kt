@@ -50,6 +50,7 @@ class TilstandsendringMonitor(
     init {
         River(rapidsConnection).apply {
             validate { it.requireValue("@event_name", "vedtaksperiode_endret") }
+            validate { it.requireKey("@forårsaket_av.event_name") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("fødselsnummer") }
             validate { it.requireKey("organisasjonsnummer") }
@@ -57,7 +58,6 @@ class TilstandsendringMonitor(
             validate { it.requireKey("forrigeTilstand") }
             validate { it.requireKey("gjeldendeTilstand") }
             validate { it.requireKey("endringstidspunkt") }
-            validate { it.requireKey("på_grunn_av") }
             validate { it.requireKey("timeout") }
         }.register(this)
     }
@@ -208,7 +208,7 @@ class TilstandsendringMonitor(
             val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
-            val påGrunnAv get() = packet["på_grunn_av"].asText()
+            val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
             val timeout: Long get() = packet["timeout"].asLong()
         }
     }
