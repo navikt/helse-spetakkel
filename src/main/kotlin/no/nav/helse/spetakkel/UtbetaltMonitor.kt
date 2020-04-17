@@ -27,7 +27,6 @@ internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.Packe
         River(rapidsConnection).apply {
             validate { it.requireValue("@event_name", "utbetalt") }
             validate { it.requireArray("utbetaling") {
-                requireKey("utbetalingsreferanse")
                 requireArray("utbetalingslinjer") {
                     requireKey("dagsats")
                     require("fom", JsonNode::asLocalDate)
