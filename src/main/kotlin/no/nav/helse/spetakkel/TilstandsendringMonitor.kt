@@ -10,7 +10,10 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import kotliquery.using
 import net.logstash.logback.argument.StructuredArguments.keyValue
-import no.nav.helse.rapids_rivers.*
+import no.nav.helse.rapids_rivers.JsonMessage
+import no.nav.helse.rapids_rivers.RapidsConnection
+import no.nav.helse.rapids_rivers.River
+import no.nav.helse.rapids_rivers.asLocalDateTime
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
@@ -89,8 +92,6 @@ class TilstandsendringMonitor(
         )
         context.send(resultat(historiskTilstandsendring, tilstandsendring, diff))
     }
-
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 
     private fun resultat(
         historiskTilstandsendring: VedtaksperiodeTilstandDao.HistoriskTilstandsendring,

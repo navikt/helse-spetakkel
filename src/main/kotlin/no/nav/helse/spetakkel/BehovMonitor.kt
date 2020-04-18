@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageProblems
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
@@ -23,7 +22,7 @@ internal class BehovMonitor(rapidsConnection: RapidsConnection) : River.PacketLi
         River(rapidsConnection).apply {
             validate { it.requireValue("@event_name", "behov") }
             validate { it.requireKey("@behov") }
-            validate { it.requireKey("vedtaksperiodeId") }
+            validate { it.interestedIn("vedtaksperiodeId") }
         }.register(this)
     }
 
@@ -31,11 +30,11 @@ internal class BehovMonitor(rapidsConnection: RapidsConnection) : River.PacketLi
         packet["@behov"]
             .takeIf(JsonNode::isArray)
             ?.map(JsonNode::asText)
+            ?.onEach { behov -> behovCounter.labels(behov).inc() }
             ?.also {
-                log.info("{} har behov for {}", keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText()), it)
-                it.forEach { behov -> behovCounter.labels(behov).inc() }
+                packet["vedtaksperiodeId"].takeIf(JsonNode::isTextual)?.asText()?.also {
+                    log.info("{} har behov for {}", keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText()), it)
+                }
             }
     }
-
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 }
