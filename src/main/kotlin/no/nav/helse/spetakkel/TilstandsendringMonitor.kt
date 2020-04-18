@@ -1,8 +1,5 @@
 package no.nav.helse.spetakkel
 
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.prometheus.client.Counter
 import io.prometheus.client.Gauge
 import kotliquery.TransactionalSession
@@ -28,17 +25,12 @@ class TilstandsendringMonitor(
     private companion object {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
         private val log = LoggerFactory.getLogger(TilstandsendringMonitor::class.java)
-        private val objectMapper = jacksonObjectMapper()
-            .registerModule(JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-
         private val tilstandCounter = Counter.build(
             "vedtaksperiode_tilstander_totals",
             "Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra"
         )
             .labelNames("forrigeTilstand", "tilstand", "hendelse")
             .register()
-
         private val tilstanderGauge = Gauge.build(
             "vedtaksperiode_gjeldende_tilstander",
             "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand (timeout=0)"
@@ -97,21 +89,19 @@ class TilstandsendringMonitor(
         historiskTilstandsendring: VedtaksperiodeTilstandDao.HistoriskTilstandsendring,
         tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring,
         diff: Long
-    ) = objectMapper.writeValueAsString(
-        mapOf(
-            "@event_name" to "vedtaksperiode_tid_i_tilstand",
-            "aktørId" to tilstandsendring.aktørId,
-            "fødselsnummer" to tilstandsendring.fødselsnummer,
-            "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
-            "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
-            "tilstand" to tilstandsendring.forrigeTilstand,
-            "nyTilstand" to tilstandsendring.gjeldendeTilstand,
-            "starttid" to historiskTilstandsendring.endringstidspunkt,
-            "sluttid" to tilstandsendring.endringstidspunkt,
-            "timeout" to historiskTilstandsendring.timeout,
-            "tid_i_tilstand" to diff
-        )
-    )
+    ) = JsonMessage.newMessage(mapOf(
+        "@event_name" to "vedtaksperiode_tid_i_tilstand",
+        "aktørId" to tilstandsendring.aktørId,
+        "fødselsnummer" to tilstandsendring.fødselsnummer,
+        "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
+        "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
+        "tilstand" to tilstandsendring.forrigeTilstand,
+        "nyTilstand" to tilstandsendring.gjeldendeTilstand,
+        "starttid" to historiskTilstandsendring.endringstidspunkt,
+        "sluttid" to tilstandsendring.endringstidspunkt,
+        "timeout" to historiskTilstandsendring.timeout,
+        "tid_i_tilstand" to diff
+    )).toJson()
 
     private var lastRefreshTime = LocalDateTime.MIN
 
