@@ -29,7 +29,7 @@ class TilstandsendringMonitor(
             "vedtaksperiode_tilstander_totals",
             "Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra"
         )
-            .labelNames("forrigeTilstand", "tilstand", "hendelse")
+            .labelNames("forrigeTilstand", "tilstand", "hendelse", "timeout")
             .register()
         private val tilstanderGauge = Gauge.build(
             "vedtaksperiode_gjeldende_tilstander",
@@ -111,7 +111,8 @@ class TilstandsendringMonitor(
         tilstandCounter.labels(
             tilstandsendring.forrigeTilstand,
             tilstandsendring.gjeldendeTilstand,
-            tilstandsendring.påGrunnAv
+            tilstandsendring.påGrunnAv,
+            "${tilstandsendring.timeout}"
         ).inc()
 
     }
