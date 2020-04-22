@@ -177,7 +177,7 @@ class TilstandsendringMonitor(
                     HistoriskTilstandsendring(
                         tilstand = it.string("tilstand"),
                         timeout = it.long("timeout"),
-                        endringstidspunkt = it.localDateTime("@opprettet").withNano(it.int("endringstidspunkt_nanos"))
+                        endringstidspunkt = it.localDateTime("endringstidspunkt").withNano(it.int("endringstidspunkt_nanos"))
                     )
                 }.asSingle
             )
