@@ -18,6 +18,7 @@ fun main() {
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
         UtbetaltMonitor(this)
+        MedlemskapMonitor(this)
     }.apply {
         register(object : RapidsConnection.StatusListener {
             override fun onStartup(rapidsConnection: RapidsConnection) {
