@@ -7,10 +7,7 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import kotliquery.using
 import net.logstash.logback.argument.StructuredArguments.keyValue
-import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
-import no.nav.helse.rapids_rivers.asLocalDateTime
+import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
@@ -44,7 +41,7 @@ class TilstandsendringMonitor(
 
     init {
         River(rapidsConnection).apply {
-            validate { it.requireValue("@event_name", "vedtaksperiode_endret") }
+            validate { it.demandValue("@event_name", "vedtaksperiode_endret") }
             validate { it.requireKey("@forårsaket_av.event_name") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("fødselsnummer") }
@@ -55,6 +52,10 @@ class TilstandsendringMonitor(
             validate { it.requireKey("@opprettet") }
             validate { it.requireKey("timeout") }
         }.register(this)
+    }
+
+    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        sikkerLogg.error("forstod ikke vedtaksperiode_endret:\n${problems.toExtendedReport()}")
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
