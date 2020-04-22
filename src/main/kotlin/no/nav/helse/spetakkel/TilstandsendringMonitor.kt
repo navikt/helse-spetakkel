@@ -52,7 +52,7 @@ class TilstandsendringMonitor(
             validate { it.requireKey("vedtaksperiodeId") }
             validate { it.requireKey("forrigeTilstand") }
             validate { it.requireKey("gjeldendeTilstand") }
-            validate { it.requireKey("endringstidspunkt") }
+            validate { it.requireKey("@opprettet") }
             validate { it.requireKey("timeout") }
         }.register(this)
     }
@@ -177,7 +177,7 @@ class TilstandsendringMonitor(
                     HistoriskTilstandsendring(
                         tilstand = it.string("tilstand"),
                         timeout = it.long("timeout"),
-                        endringstidspunkt = it.localDateTime("endringstidspunkt").withNano(it.int("endringstidspunkt_nanos"))
+                        endringstidspunkt = it.localDateTime("@opprettet").withNano(it.int("endringstidspunkt_nanos"))
                     )
                 }.asSingle
             )
@@ -199,7 +199,7 @@ class TilstandsendringMonitor(
             val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
             val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
-            val endringstidspunkt get() = packet["endringstidspunkt"].asLocalDateTime()
+            val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
             val timeout: Long get() = packet["timeout"].asLong()
         }
