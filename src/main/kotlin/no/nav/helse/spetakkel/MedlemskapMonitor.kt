@@ -34,10 +34,8 @@ internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.Pac
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        packet["@løsning.Medlemskap.resultat.svar"]
-            .takeIf(JsonNode::isTextual)
-            ?.asText()
-            ?.also { medlemskapvurderingCounter.labels(it).inc() } ?: medlemskapvurderingCounter.labels("FEIL_I_OPPSLAG").inc()
+        packet["@løsning.Medlemskap.resultat.svar"].asText()
+            .also { medlemskapvurderingCounter.labels(it).inc() }
 
         sjekkDelresultat(packet["@løsning.Medlemskap.resultat"])
     }
