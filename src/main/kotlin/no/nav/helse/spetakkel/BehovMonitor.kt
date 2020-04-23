@@ -31,9 +31,9 @@ internal class BehovMonitor(rapidsConnection: RapidsConnection) : River.PacketLi
             .takeIf(JsonNode::isArray)
             ?.map(JsonNode::asText)
             ?.onEach { behov -> behovCounter.labels(behov).inc() }
-            ?.also {
+            ?.also { behov ->
                 packet["vedtaksperiodeId"].takeIf(JsonNode::isTextual)?.asText()?.also {
-                    log.info("{} har behov for {}", keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText()), it)
+                    log.info("{} har behov for {}", keyValue("vedtaksperiodeId", it), behov)
                 }
             }
     }
