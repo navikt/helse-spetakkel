@@ -15,6 +15,10 @@ internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.Pac
         private val medlemskapvurderingCounter = Counter.build("medlemskapvurdering_totals", "Antall medlemskapvurderinger")
             .labelNames("resultat")
             .register()
+
+        private val medlemskapresultatCounter = Counter.build("medlemskapresultat_totals", "Antall medlemskapvurderinger")
+            .labelNames("identifikator", "svar")
+            .register()
     }
 
     init {
@@ -23,7 +27,8 @@ internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.Pac
                 it.demandValue("@event_name", "behov")
                 it.demandAll("@behov", listOf("Medlemskap"))
                 it.demandKey("@løsning.Medlemskap")
-                it.interestedIn("@løsning.Medlemskap.resultat.svar")
+                it.requireKey("@løsning.Medlemskap.resultat.svar",
+                    "@løsning.Medlemskap.resultat.delresultat")
             }
         }.register(this)
     }
@@ -33,5 +38,16 @@ internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.Pac
             .takeIf(JsonNode::isTextual)
             ?.asText()
             ?.also { medlemskapvurderingCounter.labels(it).inc() } ?: medlemskapvurderingCounter.labels("FEIL_I_OPPSLAG").inc()
+
+        sjekkDelresultat(packet["@løsning.Medlemskap.resultat"])
+    }
+
+    private fun sjekkDelresultat(node: JsonNode) {
+        if (node.path("delresultat").let { it.isArray && !it.isEmpty }) {
+            node.path("delresultat").map { sjekkDelresultat(it) }
+            return
+        }
+
+        medlemskapresultatCounter.labels(node.path("identifikator").asText(), node.path("svar").asText()).inc()
     }
 }
