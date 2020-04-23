@@ -42,6 +42,7 @@ class TilstandsendringMonitor(
     init {
         River(rapidsConnection).apply {
             validate { it.demandValue("@event_name", "vedtaksperiode_endret") }
+            validate { it.requireKey("@forårsaket_av") }
             validate { it.requireKey("@forårsaket_av.event_name") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("fødselsnummer") }
@@ -83,26 +84,21 @@ class TilstandsendringMonitor(
             tilstandsendring.gjeldendeTilstand,
             tilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
         )
-        context.send(resultat(historiskTilstandsendring, tilstandsendring, diff))
+        context.send(JsonMessage.newMessage(mapOf(
+            "@event_name" to "vedtaksperiode_tid_i_tilstand",
+            "aktørId" to tilstandsendring.aktørId,
+            "fødselsnummer" to tilstandsendring.fødselsnummer,
+            "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
+            "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
+            "tilstand" to tilstandsendring.forrigeTilstand,
+            "nyTilstand" to tilstandsendring.gjeldendeTilstand,
+            "starttid" to historiskTilstandsendring.endringstidspunkt,
+            "sluttid" to tilstandsendring.endringstidspunkt,
+            "timeout" to historiskTilstandsendring.timeout,
+            "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
+            "tid_i_tilstand" to diff
+        )).toJson())
     }
-
-    private fun resultat(
-        historiskTilstandsendring: VedtaksperiodeTilstandDao.HistoriskTilstandsendring,
-        tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring,
-        diff: Long
-    ) = JsonMessage.newMessage(mapOf(
-        "@event_name" to "vedtaksperiode_tid_i_tilstand",
-        "aktørId" to tilstandsendring.aktørId,
-        "fødselsnummer" to tilstandsendring.fødselsnummer,
-        "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
-        "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
-        "tilstand" to tilstandsendring.forrigeTilstand,
-        "nyTilstand" to tilstandsendring.gjeldendeTilstand,
-        "starttid" to historiskTilstandsendring.endringstidspunkt,
-        "sluttid" to tilstandsendring.endringstidspunkt,
-        "timeout" to historiskTilstandsendring.timeout,
-        "tid_i_tilstand" to diff
-    )).toJson()
 
     private var lastRefreshTime = LocalDateTime.MIN
 
