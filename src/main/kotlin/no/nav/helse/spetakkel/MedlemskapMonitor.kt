@@ -26,7 +26,7 @@ internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.Pac
             validate {
                 it.demandValue("@event_name", "behov")
                 it.demandAll("@behov", listOf("Medlemskap"))
-                it.demandKey("@løsning.Medlemskap")
+                it.demandKey("@løsning.Medlemskap.resultat")
                 it.requireKey("@løsning.Medlemskap.resultat.svar",
                     "@løsning.Medlemskap.resultat.delresultat")
             }
