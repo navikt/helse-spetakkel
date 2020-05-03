@@ -135,7 +135,7 @@ class TilstandsendringMonitor(
     private class Påminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
         override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
             vedtaksperiodeTilstandDao.oppdaterTimeout(
-                vedtaksperiodeId = packet["vedtaksperiode_id"].asText(),
+                vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
                 tilstand = packet["tilstand"].asText(),
                 timeout = packet["timeout_første_påminnelse"].asLong()
             )
