@@ -17,7 +17,7 @@ import javax.sql.DataSource
 class TilstandsendringMonitor(
     rapidsConnection: RapidsConnection,
     private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao
-) : River.PacketListener {
+) {
 
     private companion object {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
@@ -26,11 +26,11 @@ class TilstandsendringMonitor(
             "vedtaksperiode_tilstander_totals",
             "Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra"
         )
-            .labelNames("forrigeTilstand", "tilstand", "hendelse", "timeout")
+            .labelNames("forrigeTilstand", "tilstand", "hendelse")
             .register()
         private val tilstanderGauge = Gauge.build(
             "vedtaksperiode_gjeldende_tilstander",
-            "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand (timeout=0)"
+            "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand"
         )
             .labelNames("tilstand")
             .register()
@@ -41,88 +41,105 @@ class TilstandsendringMonitor(
 
     init {
         River(rapidsConnection).apply {
-            validate { it.demandValue("@event_name", "vedtaksperiode_endret") }
-            validate { it.requireKey("@forårsaket_av") }
-            validate { it.requireKey("@forårsaket_av.event_name") }
-            validate { it.requireKey("aktørId") }
-            validate { it.requireKey("fødselsnummer") }
-            validate { it.requireKey("organisasjonsnummer") }
-            validate { it.requireKey("vedtaksperiodeId") }
-            validate { it.requireKey("forrigeTilstand") }
-            validate { it.requireKey("gjeldendeTilstand") }
-            validate { it.requireKey("@opprettet") }
-            validate { it.requireKey("timeout") }
-        }.register(this)
+            validate {
+                it.demandValue("@event_name", "vedtaksperiode_endret")
+                it.requireKey("@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
+                    "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
+                    "gjeldendeTilstand", "@opprettet")
+            }
+        }.register(Tilstandsendringer(vedtaksperiodeTilstandDao))
+        River(rapidsConnection).apply {
+            validate {
+                it.demandValue("@event_name", "påminnelse")
+                it.requireKey("vedtaksperiodeId", "tilstand", "timeout_første_påminnelse", "antallGangerPåminnet")
+            }
+        }.register(Påminnelser(vedtaksperiodeTilstandDao))
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
-        sikkerLogg.error("forstod ikke vedtaksperiode_endret:\n${problems.toExtendedReport()}")
-    }
+    private class Tilstandsendringer(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
-        sikkerLogg.info(
-            "{} endret fra {} til {}:\n{}",
-            tilstandsendring.vedtaksperiodeId,
-            tilstandsendring.forrigeTilstand,
-            tilstandsendring.gjeldendeTilstand,
-            packet.toJson()
-        )
-        refreshCounters(tilstandsendring)
-
-        val historiskTilstandsendring =
-            vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(tilstandsendring) ?: return
-
-        val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
-
-        log.info(
-            "vedtaksperiode {} var i {} i {} ({}); gikk til {} {}",
-            keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
-            keyValue("tilstand", tilstandsendring.forrigeTilstand),
-            humanReadableTime(diff),
-            historiskTilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME),
-            tilstandsendring.gjeldendeTilstand,
-            tilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
-        )
-        context.send(JsonMessage.newMessage(mapOf(
-            "@event_name" to "vedtaksperiode_tid_i_tilstand",
-            "aktørId" to tilstandsendring.aktørId,
-            "fødselsnummer" to tilstandsendring.fødselsnummer,
-            "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
-            "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
-            "tilstand" to tilstandsendring.forrigeTilstand,
-            "nyTilstand" to tilstandsendring.gjeldendeTilstand,
-            "starttid" to historiskTilstandsendring.endringstidspunkt,
-            "sluttid" to tilstandsendring.endringstidspunkt,
-            "timeout" to historiskTilstandsendring.timeout,
-            "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
-            "tid_i_tilstand" to diff
-        )).toJson())
-    }
-
-    private var lastRefreshTime = LocalDateTime.MIN
-
-    private fun refreshCounters(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
-        refreshTilstandGauge()
-
-        tilstandCounter.labels(
-            tilstandsendring.forrigeTilstand,
-            tilstandsendring.gjeldendeTilstand,
-            tilstandsendring.påGrunnAv,
-            "${tilstandsendring.timeout}"
-        ).inc()
-
-    }
-
-    private fun refreshTilstandGauge() {
-        val now = LocalDateTime.now()
-        if (lastRefreshTime > now.minusSeconds(30)) return
-        log.info("Refreshing tilstand gauge")
-        TilstandType.values().forEach { tilstanderGauge.labels(it.name).set(0.0) }
-        vedtaksperiodeTilstandDao.hentGjeldendeTilstander().forEach { (tilstand, count) ->
-            tilstanderGauge.labels(tilstand).set(count.toDouble())
+        override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+            sikkerLogg.error("forstod ikke vedtaksperiode_endret:\n${problems.toExtendedReport()}")
         }
-        lastRefreshTime = now
+
+        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+            val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
+            sikkerLogg.info(
+                "{} endret fra {} til {}:\n{}",
+                tilstandsendring.vedtaksperiodeId,
+                tilstandsendring.forrigeTilstand,
+                tilstandsendring.gjeldendeTilstand,
+                packet.toJson()
+            )
+            refreshCounters(tilstandsendring)
+
+            val historiskTilstandsendring =
+                vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(tilstandsendring) ?: return
+
+            val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
+
+            log.info(
+                "vedtaksperiode {} var i {} i {} ({}); gikk til {} {}",
+                keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
+                keyValue("tilstand", tilstandsendring.forrigeTilstand),
+                humanReadableTime(diff),
+                historiskTilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME),
+                tilstandsendring.gjeldendeTilstand,
+                tilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
+            )
+            context.send(
+                JsonMessage.newMessage(
+                    mapOf(
+                        "@event_name" to "vedtaksperiode_tid_i_tilstand",
+                        "aktørId" to tilstandsendring.aktørId,
+                        "fødselsnummer" to tilstandsendring.fødselsnummer,
+                        "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
+                        "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
+                        "tilstand" to tilstandsendring.forrigeTilstand,
+                        "nyTilstand" to tilstandsendring.gjeldendeTilstand,
+                        "starttid" to historiskTilstandsendring.endringstidspunkt,
+                        "sluttid" to tilstandsendring.endringstidspunkt,
+                        "timeout" to historiskTilstandsendring.timeout,
+                        "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
+                        "tid_i_tilstand" to diff
+                    )
+                ).toJson()
+            )
+        }
+
+        private var lastRefreshTime = LocalDateTime.MIN
+
+        private fun refreshCounters(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
+            refreshTilstandGauge()
+
+            tilstandCounter.labels(
+                tilstandsendring.forrigeTilstand,
+                tilstandsendring.gjeldendeTilstand,
+                tilstandsendring.påGrunnAv
+            ).inc()
+
+        }
+
+        private fun refreshTilstandGauge() {
+            val now = LocalDateTime.now()
+            if (lastRefreshTime > now.minusSeconds(30)) return
+            log.info("Refreshing tilstand gauge")
+            TilstandType.values().forEach { tilstanderGauge.labels(it.name).set(0.0) }
+            vedtaksperiodeTilstandDao.hentGjeldendeTilstander().forEach { (tilstand, count) ->
+                tilstanderGauge.labels(tilstand).set(count.toDouble())
+            }
+            lastRefreshTime = now
+        }
+    }
+
+    private class Påminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
+        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+            vedtaksperiodeTilstandDao.oppdaterTimeout(
+                vedtaksperiodeId = packet["vedtaksperiode_id"].asText(),
+                tilstand = packet["tilstand"].asText(),
+                timeout = packet["timeout_første_påminnelse"].asLong()
+            )
+        }
     }
 
     class VedtaksperiodeTilstandDao(private val dataSource: DataSource) {
@@ -133,26 +150,32 @@ class TilstandsendringMonitor(
                     hentGjeldendeTilstand(tx, tilstandsendring.vedtaksperiodeId).also {
                         tx.run(
                             queryOf(
-                                "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, timeout, " +
+                                "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, " +
                                         "endringstidspunkt, endringstidspunkt_nanos) " +
-                                        "VALUES (?, ?, ?, ?, ?) " +
+                                        "VALUES (?, ?, ?, ?) " +
                                         "ON CONFLICT (vedtaksperiode_id) DO " +
                                         "UPDATE SET " +
                                         "tilstand=EXCLUDED.tilstand, " +
-                                        "timeout = EXCLUDED.timeout, " +
+                                        "timeout=0, " +
                                         "endringstidspunkt=EXCLUDED.endringstidspunkt, " +
                                         "endringstidspunkt_nanos=EXCLUDED.endringstidspunkt_nanos " +
                                         "WHERE (vedtaksperiode_tilstand.endringstidspunkt < EXCLUDED.endringstidspunkt) " +
                                         "   OR (vedtaksperiode_tilstand.endringstidspunkt = EXCLUDED.endringstidspunkt AND vedtaksperiode_tilstand.endringstidspunkt_nanos < EXCLUDED.endringstidspunkt_nanos)",
                                 tilstandsendring.vedtaksperiodeId,
                                 tilstandsendring.gjeldendeTilstand,
-                                tilstandsendring.timeout,
                                 tilstandsendring.endringstidspunkt,
                                 tilstandsendring.endringstidspunkt.nano
                             ).asExecute
                         )
                     }
                 }
+            }
+        }
+
+        fun oppdaterTimeout(vedtaksperiodeId: String, tilstand: String, timeout: Long) {
+            using(sessionOf(dataSource)) {
+                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET timeout = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
+                    timeout, vedtaksperiodeId, tilstand).asExecute)
             }
         }
 
@@ -198,7 +221,6 @@ class TilstandsendringMonitor(
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
-            val timeout: Long get() = packet["timeout"].asLong()
         }
     }
 
