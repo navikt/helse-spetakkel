@@ -99,7 +99,7 @@ class TilstandsendringMonitor(
                         "nyTilstand" to tilstandsendring.gjeldendeTilstand,
                         "starttid" to historiskTilstandsendring.endringstidspunkt,
                         "sluttid" to tilstandsendring.endringstidspunkt,
-                        "timeout" to historiskTilstandsendring.timeout,
+                        "timeout_første_påminnelse" to historiskTilstandsendring.timeout,
                         "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
                         "tid_i_tilstand" to diff
                     )
