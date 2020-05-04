@@ -99,6 +99,7 @@ class TilstandsendringMonitor(
                         "nyTilstand" to tilstandsendring.gjeldendeTilstand,
                         "starttid" to historiskTilstandsendring.endringstidspunkt,
                         "sluttid" to tilstandsendring.endringstidspunkt,
+                        "antall_paminnelser" to historiskTilstandsendring.antallPåminnelser,
                         "timeout_første_påminnelse" to historiskTilstandsendring.timeout,
                         "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
                         "tid_i_tilstand" to diff
@@ -134,9 +135,10 @@ class TilstandsendringMonitor(
 
     private class Påminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
         override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-            vedtaksperiodeTilstandDao.oppdaterTimeout(
+            vedtaksperiodeTilstandDao.oppdaterTimeoutOgAntallPåminnelser(
                 vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
                 tilstand = packet["tilstand"].asText(),
+                antallPåminnelser = packet["antallGangerPåminnet"].asInt(),
                 timeout = packet["timeout_første_påminnelse"].asLong()
             )
         }
@@ -157,6 +159,7 @@ class TilstandsendringMonitor(
                                         "UPDATE SET " +
                                         "tilstand=EXCLUDED.tilstand, " +
                                         "timeout=0, " +
+                                        "antall_paminnelser=0, " +
                                         "endringstidspunkt=EXCLUDED.endringstidspunkt, " +
                                         "endringstidspunkt_nanos=EXCLUDED.endringstidspunkt_nanos " +
                                         "WHERE (vedtaksperiode_tilstand.endringstidspunkt < EXCLUDED.endringstidspunkt) " +
@@ -172,10 +175,10 @@ class TilstandsendringMonitor(
             }
         }
 
-        fun oppdaterTimeout(vedtaksperiodeId: String, tilstand: String, timeout: Long) {
+        fun oppdaterTimeoutOgAntallPåminnelser(vedtaksperiodeId: String, tilstand: String, antallPåminnelser: Int, timeout: Long) {
             using(sessionOf(dataSource)) {
-                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET timeout = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
-                    timeout, vedtaksperiodeId, tilstand).asExecute)
+                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET timeout = ?, antall_paminnelser = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
+                    timeout, antallPåminnelser, vedtaksperiodeId, tilstand).asExecute)
             }
         }
 
@@ -190,12 +193,13 @@ class TilstandsendringMonitor(
         private fun hentGjeldendeTilstand(session: TransactionalSession, vedtaksperiodeId: String): HistoriskTilstandsendring? {
             return session.run(
                 queryOf(
-                    "SELECT vedtaksperiode_id, tilstand, timeout, endringstidspunkt, endringstidspunkt_nanos FROM vedtaksperiode_tilstand " +
+                    "SELECT vedtaksperiode_id, tilstand, antall_paminnelser, timeout, endringstidspunkt, endringstidspunkt_nanos FROM vedtaksperiode_tilstand " +
                             "WHERE vedtaksperiode_id = ? " +
                             "LIMIT 1", vedtaksperiodeId
                 ).map {
                     HistoriskTilstandsendring(
                         tilstand = it.string("tilstand"),
+                        antallPåminnelser = it.int("antall_paminnelser"),
                         timeout = it.long("timeout"),
                         endringstidspunkt = it.localDateTime("endringstidspunkt").withNano(it.int("endringstidspunkt_nanos"))
                     )
@@ -203,7 +207,12 @@ class TilstandsendringMonitor(
             )
         }
 
-        class HistoriskTilstandsendring(val tilstand: String, val timeout: Long, val endringstidspunkt: LocalDateTime) {
+        class HistoriskTilstandsendring(
+            val tilstand: String,
+            val antallPåminnelser: Int,
+            val timeout: Long,
+            val endringstidspunkt: LocalDateTime
+        ) {
             fun tidITilstand(other: Tilstandsendring): Long? {
                 // if the one we have is not the previous of the new,
                 // we have probably missed an event, so we can't calculate diff
