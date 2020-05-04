@@ -50,8 +50,14 @@ class TilstandsendringMonitor(
         }.register(Tilstandsendringer(vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
             validate {
+                it.demandValue("@event_name", "planlagt_påminnelse")
+                it.requireKey("vedtaksperiodeId", "tilstand", "endringstidspunkt", "påminnelsetidspunkt", "er_avsluttet")
+            }
+        }.register(PlanlagtePåminnelser(vedtaksperiodeTilstandDao))
+        River(rapidsConnection).apply {
+            validate {
                 it.demandValue("@event_name", "påminnelse")
-                it.requireKey("vedtaksperiodeId", "tilstand", "timeout_første_påminnelse", "antallGangerPåminnet")
+                it.requireKey("vedtaksperiodeId", "tilstand", "antallGangerPåminnet")
             }
         }.register(Påminnelser(vedtaksperiodeTilstandDao))
     }
@@ -133,13 +139,26 @@ class TilstandsendringMonitor(
         }
     }
 
-    private class Påminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
+    private class PlanlagtePåminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
         override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-            vedtaksperiodeTilstandDao.oppdaterTimeoutOgAntallPåminnelser(
+            val timeout = if (packet["er_avsluttet"].asBoolean()) 0 else ChronoUnit.SECONDS.between(
+                packet["endringstidspunkt"].asLocalDateTime(),
+                packet["påminnelsetidspunkt"].asLocalDateTime()
+            )
+            vedtaksperiodeTilstandDao.oppdaterTimeout(
                 vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
                 tilstand = packet["tilstand"].asText(),
-                antallPåminnelser = packet["antallGangerPåminnet"].asInt(),
-                timeout = packet["timeout_første_påminnelse"].asLong()
+                timeout = timeout
+            )
+        }
+    }
+
+    private class Påminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
+        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+            vedtaksperiodeTilstandDao.oppdaterAntallPåminnelser(
+                vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
+                tilstand = packet["tilstand"].asText(),
+                antallPåminnelser = packet["antallGangerPåminnet"].asInt()
             )
         }
     }
@@ -175,10 +194,17 @@ class TilstandsendringMonitor(
             }
         }
 
-        fun oppdaterTimeoutOgAntallPåminnelser(vedtaksperiodeId: String, tilstand: String, antallPåminnelser: Int, timeout: Long) {
+        fun oppdaterTimeout(vedtaksperiodeId: String, tilstand: String, timeout: Long) {
             using(sessionOf(dataSource)) {
-                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET timeout = ?, antall_paminnelser = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
-                    timeout, antallPåminnelser, vedtaksperiodeId, tilstand).asExecute)
+                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET timeout = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
+                    timeout, vedtaksperiodeId, tilstand).asExecute)
+            }
+        }
+
+        fun oppdaterAntallPåminnelser(vedtaksperiodeId: String, tilstand: String, antallPåminnelser: Int) {
+            using(sessionOf(dataSource)) {
+                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET antall_paminnelser = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
+                    antallPåminnelser, vedtaksperiodeId, tilstand).asExecute)
             }
         }
 
