@@ -1,5 +1,6 @@
 package no.nav.helse.spetakkel
 
+import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import io.prometheus.client.Gauge
 import kotliquery.TransactionalSession
@@ -16,7 +17,7 @@ import javax.sql.DataSource
 
 class TilstandsendringMonitor(
     rapidsConnection: RapidsConnection,
-    private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao
+    vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao
 ) {
 
     private companion object {
@@ -26,7 +27,7 @@ class TilstandsendringMonitor(
             "vedtaksperiode_tilstander_totals",
             "Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra"
         )
-            .labelNames("forrigeTilstand", "tilstand", "hendelse")
+            .labelNames("forrigeTilstand", "tilstand", "hendelse", "harVedtaksperiodeWarnings", "harHendelseWarnings")
             .register()
         private val tilstanderGauge = Gauge.build(
             "vedtaksperiode_gjeldende_tilstander",
@@ -45,7 +46,7 @@ class TilstandsendringMonitor(
                 it.demandValue("@event_name", "vedtaksperiode_endret")
                 it.requireKey("@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
-                    "gjeldendeTilstand", "@opprettet")
+                    "gjeldendeTilstand", "@opprettet", "vedtaksperiode_aktivitetslogg", "aktivitetslogg")
             }
         }.register(Tilstandsendringer(vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
@@ -122,9 +123,10 @@ class TilstandsendringMonitor(
             tilstandCounter.labels(
                 tilstandsendring.forrigeTilstand,
                 tilstandsendring.gjeldendeTilstand,
-                tilstandsendring.påGrunnAv
+                tilstandsendring.påGrunnAv,
+                if (tilstandsendring.harVedtaksperiodeWarnings) "1" else "0",
+                if (tilstandsendring.harHendelseWarnings) "1" else "0"
             ).inc()
-
         }
 
         private fun refreshTilstandGauge() {
@@ -256,6 +258,14 @@ class TilstandsendringMonitor(
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
+            val harVedtaksperiodeWarnings get() = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
+                .takeIf(JsonNode::isArray)
+                ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
+                ?.isNotEmpty() ?: false
+            val harHendelseWarnings get() = packet["aktivitetslogg.aktiviteter"]
+                .takeIf(JsonNode::isArray)
+                ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
+                ?.isNotEmpty() ?: false
         }
     }
 
