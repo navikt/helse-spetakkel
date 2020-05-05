@@ -29,6 +29,12 @@ class TilstandsendringMonitor(
         )
             .labelNames("forrigeTilstand", "tilstand", "hendelse", "harVedtaksperiodeWarnings", "harHendelseWarnings")
             .register()
+        private val tilstandWarningsCounter = Counter.build(
+            "vedtaksperiode_warnings_totals",
+            "Fordeling av warnings per tilstand"
+        )
+            .labelNames("tilstand")
+            .register()
         private val tilstanderGauge = Gauge.build(
             "vedtaksperiode_gjeldende_tilstander",
             "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand"
@@ -127,6 +133,8 @@ class TilstandsendringMonitor(
                 if (tilstandsendring.harVedtaksperiodeWarnings) "1" else "0",
                 if (tilstandsendring.harHendelseWarnings) "1" else "0"
             ).inc()
+
+            tilstandWarningsCounter.labels(tilstandsendring.gjeldendeTilstand, "${tilstandsendring.antallHendelseWarnings}").inc()
         }
 
         private fun refreshTilstandGauge() {
@@ -258,14 +266,17 @@ class TilstandsendringMonitor(
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
-            val harVedtaksperiodeWarnings get() = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
-                .takeIf(JsonNode::isArray)
-                ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
-                ?.isNotEmpty() ?: false
-            val harHendelseWarnings get() = packet["aktivitetslogg.aktiviteter"]
-                .takeIf(JsonNode::isArray)
-                ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
-                ?.isNotEmpty() ?: false
+            val harVedtaksperiodeWarnings
+                get() = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
+                    .takeIf(JsonNode::isArray)
+                    ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
+                    ?.isNotEmpty() ?: false
+            val antallHendelseWarnings
+                get() = packet["aktivitetslogg.aktiviteter"]
+                    .takeIf(JsonNode::isArray)
+                    ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
+                    ?.count() ?: 0
+            val harHendelseWarnings get() = antallHendelseWarnings > 0
         }
     }
 
