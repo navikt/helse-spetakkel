@@ -135,7 +135,7 @@ class TilstandsendringMonitor(
             ).inc()
 
             tilstandWarningsCounter
-                .labels(tilstandsendring.gjeldendeTilstand)
+                .labels(tilstandsendring.forrigeTilstand)
                 .inc(tilstandsendring.antallHendelseWarnings.toDouble())
         }
 
