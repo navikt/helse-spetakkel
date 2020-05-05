@@ -134,7 +134,9 @@ class TilstandsendringMonitor(
                 if (tilstandsendring.harHendelseWarnings) "1" else "0"
             ).inc()
 
-            tilstandWarningsCounter.labels(tilstandsendring.gjeldendeTilstand, "${tilstandsendring.antallHendelseWarnings}").inc()
+            tilstandWarningsCounter
+                .labels(tilstandsendring.gjeldendeTilstand)
+                .inc(tilstandsendring.antallHendelseWarnings.toDouble())
         }
 
         private fun refreshTilstandGauge() {
