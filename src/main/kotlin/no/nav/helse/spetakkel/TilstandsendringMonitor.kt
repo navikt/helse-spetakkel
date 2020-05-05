@@ -52,7 +52,7 @@ class TilstandsendringMonitor(
                 it.demandValue("@event_name", "vedtaksperiode_endret")
                 it.requireKey("@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
-                    "gjeldendeTilstand", "@opprettet", "vedtaksperiode_aktivitetslogg", "aktivitetslogg")
+                    "gjeldendeTilstand", "@opprettet", "vedtaksperiode_aktivitetslogg.aktiviteter", "aktivitetslogg.aktiviteter")
             }
         }.register(Tilstandsendringer(vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
