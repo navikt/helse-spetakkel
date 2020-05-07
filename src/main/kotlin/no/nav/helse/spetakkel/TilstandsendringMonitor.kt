@@ -52,13 +52,16 @@ class TilstandsendringMonitor(
                 it.demandValue("@event_name", "vedtaksperiode_endret")
                 it.requireKey("@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
-                    "gjeldendeTilstand", "@opprettet", "vedtaksperiode_aktivitetslogg.aktiviteter", "aktivitetslogg.aktiviteter")
+                    "gjeldendeTilstand", "vedtaksperiode_aktivitetslogg.aktiviteter", "aktivitetslogg.aktiviteter")
+                it.require("@opprettet", JsonNode::asLocalDateTime)
+                it.require("makstid", JsonNode::asLocalDateTime)
             }
         }.register(Tilstandsendringer(vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
             validate {
                 it.demandValue("@event_name", "planlagt_påminnelse")
                 it.requireKey("vedtaksperiodeId", "tilstand", "endringstidspunkt", "påminnelsetidspunkt", "er_avsluttet")
+                it.require("endringstidspunkt", JsonNode::asLocalDateTime)
             }
         }.register(PlanlagtePåminnelser(vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
@@ -113,6 +116,7 @@ class TilstandsendringMonitor(
                         "starttid" to historiskTilstandsendring.endringstidspunkt,
                         "sluttid" to tilstandsendring.endringstidspunkt,
                         "antall_paminnelser" to historiskTilstandsendring.antallPåminnelser,
+                        "makstid" to historiskTilstandsendring.makstid,
                         "timeout_første_påminnelse" to historiskTilstandsendring.timeout,
                         "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
                         "tid_i_tilstand" to diff
@@ -183,13 +187,14 @@ class TilstandsendringMonitor(
                     hentGjeldendeTilstand(tx, tilstandsendring.vedtaksperiodeId).also {
                         tx.run(
                             queryOf(
-                                "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, " +
+                                "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, makstid, " +
                                         "endringstidspunkt, endringstidspunkt_nanos) " +
-                                        "VALUES (?, ?, ?, ?) " +
+                                        "VALUES (?, ?, ?, ?, ?) " +
                                         "ON CONFLICT (vedtaksperiode_id) DO " +
                                         "UPDATE SET " +
                                         "tilstand=EXCLUDED.tilstand, " +
                                         "timeout=0, " +
+                                        "makstid=EXCLUDED.makstid, " +
                                         "antall_paminnelser=0, " +
                                         "endringstidspunkt=EXCLUDED.endringstidspunkt, " +
                                         "endringstidspunkt_nanos=EXCLUDED.endringstidspunkt_nanos " +
@@ -197,6 +202,7 @@ class TilstandsendringMonitor(
                                         "   OR (vedtaksperiode_tilstand.endringstidspunkt = EXCLUDED.endringstidspunkt AND vedtaksperiode_tilstand.endringstidspunkt_nanos < EXCLUDED.endringstidspunkt_nanos)",
                                 tilstandsendring.vedtaksperiodeId,
                                 tilstandsendring.gjeldendeTilstand,
+                                tilstandsendring.makstid,
                                 tilstandsendring.endringstidspunkt,
                                 tilstandsendring.endringstidspunkt.nano
                             ).asExecute
@@ -231,7 +237,7 @@ class TilstandsendringMonitor(
         private fun hentGjeldendeTilstand(session: TransactionalSession, vedtaksperiodeId: String): HistoriskTilstandsendring? {
             return session.run(
                 queryOf(
-                    "SELECT vedtaksperiode_id, tilstand, antall_paminnelser, timeout, endringstidspunkt, endringstidspunkt_nanos FROM vedtaksperiode_tilstand " +
+                    "SELECT vedtaksperiode_id, tilstand, antall_paminnelser, timeout, makstid, endringstidspunkt, endringstidspunkt_nanos FROM vedtaksperiode_tilstand " +
                             "WHERE vedtaksperiode_id = ? " +
                             "LIMIT 1", vedtaksperiodeId
                 ).map {
@@ -239,6 +245,7 @@ class TilstandsendringMonitor(
                         tilstand = it.string("tilstand"),
                         antallPåminnelser = it.int("antall_paminnelser"),
                         timeout = it.long("timeout"),
+                        makstid = it.localDateTime("makstid"),
                         endringstidspunkt = it.localDateTime("endringstidspunkt").withNano(it.int("endringstidspunkt_nanos"))
                     )
                 }.asSingle
@@ -249,6 +256,7 @@ class TilstandsendringMonitor(
             val tilstand: String,
             val antallPåminnelser: Int,
             val timeout: Long,
+            val makstid: LocalDateTime,
             val endringstidspunkt: LocalDateTime
         ) {
             fun tidITilstand(other: Tilstandsendring): Long? {
@@ -267,6 +275,7 @@ class TilstandsendringMonitor(
             val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
+            val makstid get() = packet["makstid"].asLocalDateTime()
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
             val harVedtaksperiodeWarnings
                 get() = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
