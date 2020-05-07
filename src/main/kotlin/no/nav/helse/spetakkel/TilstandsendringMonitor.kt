@@ -123,7 +123,13 @@ class TilstandsendringMonitor(
                         "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
                         "tid_i_tilstand" to diff
                     )
-                ).toJson()
+                ).toJson().also {
+                    sikkerLogg.info("sender event=vedtaksperiode_tid_i_tilstand for {} i {}:\n\t{}",
+                        keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
+                        keyValue("tilstand", tilstandsendring.forrigeTilstand),
+                        it
+                    )
+                }
             )
         }
 
