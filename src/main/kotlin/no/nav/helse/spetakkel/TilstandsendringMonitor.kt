@@ -10,7 +10,9 @@ import kotliquery.using
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.temporal.ChronoUnit
 import javax.sql.DataSource
@@ -256,9 +258,11 @@ class TilstandsendringMonitor(
             val tilstand: String,
             val antallPåminnelser: Int,
             val timeout: Long,
-            val makstid: LocalDateTime,
+            makstid: LocalDateTime,
             val endringstidspunkt: LocalDateTime
         ) {
+            val makstid = makstid.takeUnless { it.year == 9999 } ?: LocalDateTime.MAX
+
             fun tidITilstand(other: Tilstandsendring): Long? {
                 // if the one we have is not the previous of the new,
                 // we have probably missed an event, so we can't calculate diff
@@ -275,7 +279,10 @@ class TilstandsendringMonitor(
             val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
-            val makstid get() = packet["makstid"].asLocalDateTime()
+            val makstid get() = packet["makstid"]
+                .asLocalDateTime()
+                .takeUnless { it == LocalDateTime.MAX }
+                ?: LocalDateTime.of(LocalDate.ofYearDay(9999, 1), LocalTime.MIN)
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
             val harVedtaksperiodeWarnings
                 get() = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
