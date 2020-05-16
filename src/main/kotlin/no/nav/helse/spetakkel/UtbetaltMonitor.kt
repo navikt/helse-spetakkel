@@ -1,11 +1,12 @@
 package no.nav.helse.spetakkel
 
-import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import io.prometheus.client.Summary
-import no.nav.helse.rapids_rivers.*
+import no.nav.helse.rapids_rivers.JsonMessage
+import no.nav.helse.rapids_rivers.MessageProblems
+import no.nav.helse.rapids_rivers.RapidsConnection
+import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
-import java.time.DayOfWeek
 
 internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
     private companion object {
@@ -25,10 +26,8 @@ internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.Packe
     init {
         River(rapidsConnection).apply {
             validate { it.demandValue("@event_name", "utbetalt") }
-            validate { it.requireArray("utbetalingslinjer") {
-                requireKey("dagsats")
-                require("fom", JsonNode::asLocalDate)
-                require("tom", JsonNode::asLocalDate)
+            validate { it.requireArray("utbetalt") {
+                requireKey("totalbeløp")
             } }
         }.register(this)
     }
@@ -39,12 +38,9 @@ internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.Packe
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         utbetaltCounter.inc()
-        val totalbeløp = packet["utbetalingslinjer"]
-            .map {
-                it["fom"].asLocalDate().datesUntil(it["tom"].asLocalDate().plusDays(1)).filter {
-                    it.dayOfWeek !in listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
-                }.count().toInt() to it["dagsats"].asInt()
-            }.sumBy { it.first * it.second }
+        val totalbeløp = packet["utbetalt"]
+            .map { it["totalbeløp"].asInt() }
+            .sum()
         utbetalingBeløp.observe(totalbeløp.toDouble())
     }
 
