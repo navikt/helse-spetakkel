@@ -4,10 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import io.prometheus.client.Summary
 import no.nav.helse.rapids_rivers.*
+import org.slf4j.LoggerFactory
 import java.time.DayOfWeek
 
 internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
     private companion object {
+        private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
         private val utbetaltCounter =
             Counter.build("utbetaling_totals", "Antall utbetalinger")
                 .register()
@@ -22,13 +24,17 @@ internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.Packe
 
     init {
         River(rapidsConnection).apply {
-            validate { it.requireValue("@event_name", "utbetalt") }
+            validate { it.demandValue("@event_name", "utbetalt") }
             validate { it.requireArray("utbetalingslinjer") {
                 requireKey("dagsats")
                 require("fom", JsonNode::asLocalDate)
                 require("tom", JsonNode::asLocalDate)
             } }
         }.register(this)
+    }
+
+    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        sikkerLogg.error("forstod ikke utbetalt:\n${problems.toExtendedReport()}")
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
