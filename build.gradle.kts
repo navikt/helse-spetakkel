@@ -17,7 +17,7 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:1.73dddb5")
+    implementation("com.github.navikt:rapids-and-rivers:1.74ae9cb")
 
     implementation("org.flywaydb:flyway-core:6.3.1")
     implementation("com.zaxxer:HikariCP:3.4.2")
@@ -35,6 +35,7 @@ dependencies {
 
 repositories {
     mavenCentral()
+    maven("https://kotlin.bintray.com/ktor")
     maven {
         url = uri("https://maven.pkg.github.com/navikt/rapids-and-rivers")
         credentials {
