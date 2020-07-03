@@ -12,7 +12,7 @@ class ForlengelserUtenAdvarslerMonitor(
 ) {
 
     private companion object {
-        private val log = LoggerFactory.getLogger(TilstandsendringMonitor::class.java)
+        private val log = LoggerFactory.getLogger(ForlengelserUtenAdvarslerMonitor::class.java)
 
         private val counter = Counter.build(
                 "forlengelser_til_godkjenning_uten_advarsler",
@@ -25,7 +25,7 @@ class ForlengelserUtenAdvarslerMonitor(
             validate {
                 it.demandValue("@event_name", "vedtaksperiode_endret")
                 it.requireValue("gjeldendeTilstand", "AVVENTER_GODKJENNING")
-                it.requireKey("aktivitetslogg.aktiviteter")
+                it.requireKey("vedtaksperiode_aktivitetslogg.aktiviteter")
             }
         }.register(TilGodkjenning())
     }
@@ -41,12 +41,12 @@ class ForlengelserUtenAdvarslerMonitor(
             }
         }
 
-        private fun erForlengelse(packet: JsonMessage) = packet["aktivitetslogg.aktiviteter"]
+        private fun erForlengelse(packet: JsonMessage) = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
                 .takeIf(JsonNode::isArray)
                 ?.filter { it["alvorlighetsgrad"].asText() == "INFO" }
                 ?.any { it["melding"].asText().startsWith("Perioden er en forlengelse") } ?: false
 
-        private fun antallVarsler(packet: JsonMessage) = packet["aktivitetslogg.aktiviteter"]
+        private fun antallVarsler(packet: JsonMessage) = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
                 .takeIf(JsonNode::isArray)
                 ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
                 ?.count() ?: 0
