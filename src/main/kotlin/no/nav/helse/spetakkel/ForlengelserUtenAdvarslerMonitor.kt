@@ -5,15 +5,12 @@ import io.prometheus.client.Counter
 import no.nav.helse.rapids_rivers.JsonMessage
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
-import org.slf4j.LoggerFactory
 
 class ForlengelserUtenAdvarslerMonitor(
         rapidsConnection: RapidsConnection
 ) {
 
     private companion object {
-        private val log = LoggerFactory.getLogger(ForlengelserUtenAdvarslerMonitor::class.java)
-
         private val counter = Counter.build(
                 "forlengelser_til_godkjenning_uten_advarsler",
                 "Antall perioder som ikke er førstegangsbehandling og ikke har noen warnings"
@@ -30,25 +27,20 @@ class ForlengelserUtenAdvarslerMonitor(
         }.register(TilGodkjenning())
     }
 
-    private class TilGodkjenning : River.PacketListener {
+    class TilGodkjenning : River.PacketListener {
 
         override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-            if (erForlengelse(packet)) {
-                log.info("Forlengelse sendt til godkjenning, inneholder ${antallVarsler(packet)} varsler.")
-            }
-            if (erForlengelse(packet) && antallVarsler(packet) == 0) {
+            val aktiviterer = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
+                    .takeIf(JsonNode::isArray)
+                    ?.groupBy { it["alvorlighetsgrad"].asText() }
+
+            val harAdvarsler = aktiviterer?.get("WARN") != null
+            val erForlengelse = aktiviterer?.get("INFO")
+                    ?.any { it["melding"].asText().startsWith("Perioden er en forlengelse") } == true
+
+            if (erForlengelse && !harAdvarsler) {
                 counter.inc()
             }
         }
-
-        private fun erForlengelse(packet: JsonMessage) = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
-                .takeIf(JsonNode::isArray)
-                ?.filter { it["alvorlighetsgrad"].asText() == "INFO" }
-                ?.any { it["melding"].asText().startsWith("Perioden er en forlengelse") } ?: false
-
-        private fun antallVarsler(packet: JsonMessage) = packet["vedtaksperiode_aktivitetslogg.aktiviteter"]
-                .takeIf(JsonNode::isArray)
-                ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
-                ?.count() ?: 0
     }
 }
