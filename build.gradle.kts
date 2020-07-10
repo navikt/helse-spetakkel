@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-val junitJupiterVersion = "5.6.0"
+val junitJupiterVersion = "5.6.2"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
@@ -17,10 +17,10 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:1.74ae9cb")
+    implementation("com.github.navikt:rapids-and-rivers:fa839faa1c")
 
-    implementation("org.flywaydb:flyway-core:6.3.1")
-    implementation("com.zaxxer:HikariCP:3.4.2")
+    implementation("org.flywaydb:flyway-core:6.5.0")
+    implementation("com.zaxxer:HikariCP:3.4.5")
     implementation("no.nav:vault-jdbc:1.3.1")
     implementation("com.github.seratch:kotliquery:1.3.1")
 
@@ -34,56 +34,46 @@ dependencies {
 }
 
 repositories {
-    mavenCentral()
-    maven("https://kotlin.bintray.com/ktor")
-    maven {
-        url = uri("https://maven.pkg.github.com/navikt/rapids-and-rivers")
-        credentials {
-            username = githubUser
-            password = githubPassword
+    jcenter()
+    maven("https://jitpack.io")
+}
+
+tasks {
+    withType<Jar> {
+        archiveBaseName.set("app")
+
+        manifest {
+            attributes["Main-Class"] = mainClass
+            attributes["Class-Path"] = configurations.runtimeClasspath.get().joinToString(separator = " ") {
+                it.name
+            }
+        }
+
+        doLast {
+            configurations.runtimeClasspath.get().forEach {
+                val file = File("$buildDir/libs/${it.name}")
+                if (!file.exists())
+                    it.copyTo(file)
+            }
         }
     }
-}
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_12
-    targetCompatibility = JavaVersion.VERSION_12
-}
+    named<KotlinCompile>("compileKotlin") {
+        kotlinOptions.jvmTarget = "12"
+    }
 
-tasks.named<Jar>("jar") {
-    archiveBaseName.set("app")
+    named<KotlinCompile>("compileTestKotlin") {
+        kotlinOptions.jvmTarget = "12"
+    }
 
-    manifest {
-        attributes["Main-Class"] = mainClass
-        attributes["Class-Path"] = configurations.runtimeClasspath.get().joinToString(separator = " ") {
-            it.name
+    withType<Test> {
+        useJUnitPlatform()
+        testLogging {
+            events("passed", "skipped", "failed")
         }
     }
 
-    doLast {
-        configurations.runtimeClasspath.get().forEach {
-            val file = File("$buildDir/libs/${it.name}")
-            if (!file.exists())
-                it.copyTo(file)
-        }
+    withType<Wrapper> {
+        gradleVersion = "6.5.1"
     }
-}
-
-tasks.named<KotlinCompile>("compileKotlin") {
-    kotlinOptions.jvmTarget = "12"
-}
-
-tasks.named<KotlinCompile>("compileTestKotlin") {
-    kotlinOptions.jvmTarget = "12"
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-    testLogging {
-        events("passed", "skipped", "failed")
-    }
-}
-
-tasks.withType<Wrapper> {
-    gradleVersion = "6.1"
 }
