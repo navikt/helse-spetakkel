@@ -19,6 +19,7 @@ fun main() {
         TidITilstandMonitor(this)
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
+        GodkjenningsbehovMonitor(this)
         UtbetaltMonitor(this)
         MedlemskapMonitor(this)
     }.apply {
