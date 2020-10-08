@@ -11,7 +11,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
     private companion object {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
         private val godkjenningsbehovløsningCounter =
-            Counter.build("godkjenningsbehovløsning_totals", "Antall løste godkjenningsbehov")
+            Counter.build("godkjenningsbehovlosning_totals", "Antall løste godkjenningsbehov")
                     .labelNames("periodetype", "harWarnings", "godkjent", "automatiskBehandling")
                 .register()
         private val godkjenningsbehovCounter =
