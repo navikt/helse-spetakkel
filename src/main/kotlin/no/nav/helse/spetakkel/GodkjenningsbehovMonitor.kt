@@ -26,7 +26,8 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                 it.demandAll("@behov", listOf("Godkjenning"))
                 it.demandKey("@løsning")
                 it.demandValue("@final", true)
-                it.requireKey("warnings", "periodetype")
+                it.interestedIn("warnings", "periodetype")
+                it.interestedIn("Godkjenning.warnings", "Godkjenning.periodetype")
                 it.requireKey("@løsning.Godkjenning.godkjent", "@løsning.Godkjenning.automatiskBehandling")
             }
         }.register(Godkjenningsbehovløsninger())
@@ -34,7 +35,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
             validate {
                 it.demandAll("@behov", listOf("Godkjenning"))
                 it.rejectKey("@løsning")
-                it.requireKey("warnings", "periodetype")
+                it.requireKey("Godkjenning.warnings", "Godkjenning.periodetype")
             }
         }.register(Godkjenningsbehov())
     }
