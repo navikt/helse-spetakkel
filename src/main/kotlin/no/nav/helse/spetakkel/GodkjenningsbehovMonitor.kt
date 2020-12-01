@@ -47,7 +47,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
 
         override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
             godkjenningsbehovCounter.labels(
-                    packet["periodetype"].asText(),
+                    packet["Godkjenning.periodetype"].asText(),
                     if (packet["warnings"].path("aktiviteter").any { it.path("alvorlighetsgrad").asText() == "WARN" }) "1" else "0"
             ).inc()
         }
