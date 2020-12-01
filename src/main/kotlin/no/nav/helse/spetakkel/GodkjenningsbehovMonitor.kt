@@ -1,10 +1,12 @@
 package no.nav.helse.spetakkel
 
+import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import no.nav.helse.rapids_rivers.JsonMessage
 import no.nav.helse.rapids_rivers.MessageProblems
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
+import no.nav.helse.rapids_rivers.isMissingOrNull
 import org.slf4j.LoggerFactory
 
 internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
@@ -48,7 +50,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
         override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
             godkjenningsbehovCounter.labels(
                     packet["Godkjenning.periodetype"].asText(),
-                    if (packet["warnings"].path("aktiviteter").any { it.path("alvorlighetsgrad").asText() == "WARN" }) "1" else "0"
+                    if (packet["Godkjenning.warnings"].path("aktiviteter").any { it.path("alvorlighetsgrad").asText() == "WARN" }) "1" else "0"
             ).inc()
         }
     }
@@ -60,11 +62,16 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
 
         override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
             godkjenningsbehovløsningCounter.labels(
-                    packet["periodetype"].asText(),
-                    if (packet["warnings"].path("aktiviteter").any { it.path("alvorlighetsgrad").asText() == "WARN" }) "1" else "0",
+                    packet.periodetype().asText(),
+                    if (packet.warnings().path("aktiviteter").any { it.path("alvorlighetsgrad").asText() == "WARN" }) "1" else "0",
                     if (packet["@løsning.Godkjenning.godkjent"].asBoolean()) "1" else "0",
                     if (packet["@løsning.Godkjenning.automatiskBehandling"].asBoolean()) "1" else "0"
             ).inc()
         }
+
+        private fun JsonMessage.warnings() =
+                get("warnings").takeUnless(JsonNode::isMissingOrNull) ?: get("Godkjenning.warnings")
+        private fun JsonMessage.periodetype() =
+                get("periodetype").takeUnless(JsonNode::isMissingOrNull) ?: get("Godkjenning.periodetype")
     }
 }
