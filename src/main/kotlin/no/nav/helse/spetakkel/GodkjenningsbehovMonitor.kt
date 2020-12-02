@@ -42,19 +42,6 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
         }.register(Godkjenningsbehov())
     }
 
-    private class Godkjenningsbehov() : River.PacketListener {
-        override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
-            sikkerLogg.error("forstod ikke Godkjenningbehov:\n${problems.toExtendedReport()}")
-        }
-
-        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-            godkjenningsbehovCounter.labels(
-                    packet["Godkjenning.periodetype"].asText(),
-                    if (packet["Godkjenning.warnings"].path("aktiviteter").any { it.path("alvorlighetsgrad").asText() == "WARN" }) "1" else "0"
-            ).inc()
-        }
-    }
-
     private class Godkjenningsbehovløsninger() : River.PacketListener {
         override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
             sikkerLogg.error("forstod ikke Godkjenningbehovløsning:\n${problems.toExtendedReport()}")
@@ -73,5 +60,18 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                 get("warnings").takeUnless(JsonNode::isMissingOrNull) ?: get("Godkjenning.warnings")
         private fun JsonMessage.periodetype() =
                 get("periodetype").takeUnless(JsonNode::isMissingOrNull) ?: get("Godkjenning.periodetype")
+    }
+
+    private class Godkjenningsbehov() : River.PacketListener {
+        override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+            sikkerLogg.error("forstod ikke Godkjenningbehov:\n${problems.toExtendedReport()}")
+        }
+
+        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+            godkjenningsbehovCounter.labels(
+                    packet["Godkjenning.periodetype"].asText(),
+                    if (packet["Godkjenning.warnings"].path("aktiviteter").any { it.path("alvorlighetsgrad").asText() == "WARN" }) "1" else "0"
+            ).inc()
+        }
     }
 }
