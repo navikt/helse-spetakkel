@@ -1,10 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-val junitJupiterVersion = "5.6.2"
+val junitJupiterVersion = "5.7.0"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.4.21"
 }
 
 buildscript {
@@ -17,10 +17,10 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:fa839faa1c")
+    implementation("com.github.navikt:rapids-and-rivers:36e685a91a")
 
-    implementation("org.flywaydb:flyway-core:6.5.0")
-    implementation("com.zaxxer:HikariCP:3.4.5")
+    implementation("org.flywaydb:flyway-core:7.5.2")
+    implementation("com.zaxxer:HikariCP:4.0.1")
     implementation("no.nav:vault-jdbc:1.3.1")
     implementation("com.github.seratch:kotliquery:1.3.1")
 
@@ -59,11 +59,11 @@ tasks {
     }
 
     named<KotlinCompile>("compileKotlin") {
-        kotlinOptions.jvmTarget = "12"
+        kotlinOptions.jvmTarget = "14"
     }
 
     named<KotlinCompile>("compileTestKotlin") {
-        kotlinOptions.jvmTarget = "12"
+        kotlinOptions.jvmTarget = "14"
     }
 
     withType<Test> {
@@ -74,6 +74,6 @@ tasks {
     }
 
     withType<Wrapper> {
-        gradleVersion = "6.5.1"
+        gradleVersion = "6.8.1"
     }
 }

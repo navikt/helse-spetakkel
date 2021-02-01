@@ -50,6 +50,6 @@ internal class MigrationTest {
     @Test
     fun `migreringer skal kjøre`() {
         val migrations = runMigration()
-        assertTrue(migrations > 0, "Ingen migreringer ble kjørt")
+        assertTrue(migrations.migrationsExecuted > 0, "Ingen migreringer ble kjørt")
     }
 }
