@@ -22,6 +22,7 @@ fun main() {
         GodkjenningsbehovMonitor(this)
         UtbetaltMonitor(this)
         MedlemskapMonitor(this)
+        BehovUtenLøsningMonitor(this)
     }.apply {
         register(object : RapidsConnection.StatusListener {
             override fun onStartup(rapidsConnection: RapidsConnection) {
