@@ -1,27 +1,21 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-val junitJupiterVersion = "5.7.0"
+val junitJupiterVersion = "5.7.1"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
-    kotlin("jvm") version "1.4.21"
-}
-
-buildscript {
-    dependencies {
-        classpath("org.junit.platform:junit-platform-gradle-plugin:1.2.0")
-    }
+    kotlin("jvm") version "1.4.30"
 }
 
 val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:36e685a91a")
+    implementation("com.github.navikt:rapids-and-rivers:1.a77261b")
 
-    implementation("org.flywaydb:flyway-core:7.5.2")
-    implementation("com.zaxxer:HikariCP:4.0.1")
-    implementation("no.nav:vault-jdbc:1.3.1")
+    implementation("org.flywaydb:flyway-core:7.5.4")
+    implementation("com.zaxxer:HikariCP:4.0.2")
+    implementation("no.nav:vault-jdbc:1.3.7")
     implementation("com.github.seratch:kotliquery:1.3.1")
 
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")

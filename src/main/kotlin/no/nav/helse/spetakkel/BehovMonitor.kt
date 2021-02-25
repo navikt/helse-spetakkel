@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.JsonMessage
+import no.nav.helse.rapids_rivers.MessageContext
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
@@ -29,7 +30,7 @@ internal class BehovMonitor(rapidsConnection: RapidsConnection) : River.PacketLi
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         packet["@behov"]
             .takeIf(JsonNode::isArray)
             ?.map(JsonNode::asText)

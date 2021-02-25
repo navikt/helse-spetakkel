@@ -3,6 +3,7 @@ package no.nav.helse.spetakkel
 import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import no.nav.helse.rapids_rivers.JsonMessage
+import no.nav.helse.rapids_rivers.MessageContext
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
@@ -28,7 +29,7 @@ internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         packet["aktivitetslogg.aktiviteter"]
             .takeIf(JsonNode::isArray)
             ?.filter { it["alvorlighetsgrad"].asText() in listOf("WARN", "ERROR") }

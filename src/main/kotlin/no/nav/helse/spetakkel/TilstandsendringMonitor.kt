@@ -76,11 +76,11 @@ class TilstandsendringMonitor(
 
     private class Tilstandsendringer(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
 
-        override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        override fun onError(problems: MessageProblems, context: MessageContext) {
             sikkerLogg.error("forstod ikke vedtaksperiode_endret:\n${problems.toExtendedReport()}")
         }
 
-        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext) {
             val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
             sikkerLogg.info(
                 "{} endret fra {} til {}:\n{}",
@@ -105,7 +105,7 @@ class TilstandsendringMonitor(
                 tilstandsendring.gjeldendeTilstand,
                 tilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
             )
-            context.send(
+            context.publish(
                 JsonMessage.newMessage(
                     mapOf(
                         "@event_name" to "vedtaksperiode_tid_i_tilstand",
@@ -164,7 +164,7 @@ class TilstandsendringMonitor(
     }
 
     private class PlanlagtePåminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
-        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext) {
             val timeout = if (packet["er_avsluttet"].asBoolean()) 0 else ChronoUnit.SECONDS.between(
                 packet["endringstidspunkt"].asLocalDateTime(),
                 packet["påminnelsetidspunkt"].asLocalDateTime()
@@ -178,7 +178,7 @@ class TilstandsendringMonitor(
     }
 
     private class Påminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
-        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext) {
             vedtaksperiodeTilstandDao.oppdaterAntallPåminnelser(
                 vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
                 tilstand = packet["tilstand"].asText(),

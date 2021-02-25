@@ -1,10 +1,7 @@
 package no.nav.helse.spetakkel
 
 import io.prometheus.client.Counter
-import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageProblems
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
+import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 
 internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
@@ -40,11 +37,11 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
     }
 
     private class Godkjenningsbehovløsninger() : River.PacketListener {
-        override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        override fun onError(problems: MessageProblems, context: MessageContext) {
             sikkerLogg.error("forstod ikke Godkjenningbehovløsning:\n${problems.toExtendedReport()}")
         }
 
-        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext) {
             godkjenningsbehovløsningCounter.labels(
                 packet["Godkjenning.periodetype"].asText(),
                 packet["Godkjenning.inntektskilde"].asText(),
@@ -58,11 +55,11 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
     }
 
     private class Godkjenningsbehov() : River.PacketListener {
-        override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        override fun onError(problems: MessageProblems, context: MessageContext) {
             sikkerLogg.error("forstod ikke Godkjenningbehov:\n${problems.toExtendedReport()}")
         }
 
-        override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext) {
             godkjenningsbehovCounter.labels(
                 packet["Godkjenning.periodetype"].asText(),
                 packet["Godkjenning.inntektskilde"].asText(),

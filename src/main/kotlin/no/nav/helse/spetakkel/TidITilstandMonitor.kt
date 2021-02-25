@@ -2,6 +2,7 @@ package no.nav.helse.spetakkel
 
 import io.prometheus.client.Histogram
 import no.nav.helse.rapids_rivers.JsonMessage
+import no.nav.helse.rapids_rivers.MessageContext
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
@@ -39,7 +40,7 @@ internal class TidITilstandMonitor(rapidsConnection: RapidsConnection) : River.P
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         val tidITilstand = TidITilstand(packet)
         tidITilstand.observe(histogram)
     }

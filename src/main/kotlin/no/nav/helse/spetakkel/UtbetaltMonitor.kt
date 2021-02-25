@@ -2,10 +2,7 @@ package no.nav.helse.spetakkel
 
 import io.prometheus.client.Counter
 import io.prometheus.client.Summary
-import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageProblems
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
+import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 
 internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
@@ -32,11 +29,11 @@ internal class UtbetaltMonitor(rapidsConnection: RapidsConnection) : River.Packe
         }.register(this)
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+    override fun onError(problems: MessageProblems, context: MessageContext) {
         sikkerLogg.error("forstod ikke utbetalt:\n${problems.toExtendedReport()}")
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         utbetaltCounter.inc()
         val totalbeløp = packet["utbetalt"]
             .map { it["totalbeløp"].asInt() }
