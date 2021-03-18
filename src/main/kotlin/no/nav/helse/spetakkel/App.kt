@@ -15,7 +15,6 @@ fun main() {
         EventMonitor(this)
         AktivitetsloggMonitor(this)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
-        ForlengelserUtenAdvarslerMonitor(this)
         TidITilstandMonitor(this)
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
