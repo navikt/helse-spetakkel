@@ -211,7 +211,7 @@ class TilstandsendringMonitor(
                         tx.run(
                             queryOf(
                                 "INSERT INTO vedtaksperiode_endret_historikk (vedtaksperiode_id, forrige, gjeldende, endringstidspunkt, endringstidspunkt_nanos) " +
-                                        "VALUES (?::uuid, ?, ?, ?) " +
+                                        "VALUES (?::uuid, ?, ?, ?, ?) " +
                                         "ON CONFLICT(endringstidspunkt,endringstidspunkt_nanos) DO NOTHING",
                                 tilstandsendring.vedtaksperiodeId,
                                 tilstandsendring.forrigeTilstand,
