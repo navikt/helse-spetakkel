@@ -52,9 +52,11 @@ class TilstandsendringMonitor(
         River(rapidsConnection).apply {
             validate {
                 it.demandValue("@event_name", "vedtaksperiode_endret")
-                it.requireKey("@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
+                it.requireKey(
+                    "@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
-                    "gjeldendeTilstand", "aktivitetslogg.aktiviteter")
+                    "gjeldendeTilstand", "aktivitetslogg.aktiviteter"
+                )
                 it.require("@opprettet", JsonNode::asLocalDateTime)
                 it.require("makstid", JsonNode::asLocalDateTime)
             }
@@ -91,6 +93,7 @@ class TilstandsendringMonitor(
             )
             refreshCounters(tilstandsendring)
 
+            loopDetection(tilstandsendring, context)
             val historiskTilstandsendring =
                 vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(tilstandsendring) ?: return
 
@@ -124,13 +127,25 @@ class TilstandsendringMonitor(
                         "tid_i_tilstand" to diff
                     )
                 ).toJson().also {
-                    sikkerLogg.info("sender event=vedtaksperiode_tid_i_tilstand for {} i {}:\n\t{}",
+                    sikkerLogg.info(
+                        "sender event=vedtaksperiode_tid_i_tilstand for {} i {}:\n\t{}",
                         keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
                         keyValue("tilstand", tilstandsendring.forrigeTilstand),
                         it
                     )
                 }
             )
+        }
+
+        private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring, context: MessageContext) {
+            val historikk = vedtaksperiodeTilstandDao.hentHistoriskeEndringer(tilstandsendring)
+            if (historikk.size != 2) return
+            if (tilstandsendring.forrigeTilstand != historikk.last().first) return
+            if (tilstandsendring.gjeldendeTilstand != historikk.last().second) return
+            if (tilstandsendring.forrigeTilstand != historikk.first().second) return
+            if (tilstandsendring.gjeldendeTilstand != historikk.first().first) return
+            sikkerLogg.error("{} går i loop mellom {} og {}!", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
+            log.error("{} går i loop mellom {} og {}!", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
         }
 
         private var lastRefreshTime = LocalDateTime.MIN
@@ -195,6 +210,18 @@ class TilstandsendringMonitor(
                     hentGjeldendeTilstand(tx, tilstandsendring.vedtaksperiodeId).also {
                         tx.run(
                             queryOf(
+                                "INSERT INTO vedtaksperiode_endret_historikk (vedtaksperiode_id, forrige, gjeldende, endringstidspunkt, endringstidspunkt_nanos) " +
+                                        "VALUES (?::uuid, ?, ?, ?) " +
+                                        "ON CONFLICT(endringstidspunkt,endringstidspunkt_nanos) DO NOTHING",
+                                tilstandsendring.vedtaksperiodeId,
+                                tilstandsendring.forrigeTilstand,
+                                tilstandsendring.gjeldendeTilstand,
+                                tilstandsendring.endringstidspunkt,
+                                tilstandsendring.endringstidspunkt.nano
+                            ).asExecute
+                        )
+                        tx.run(
+                            queryOf(
                                 "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, makstid, " +
                                         "endringstidspunkt, endringstidspunkt_nanos) " +
                                         "VALUES (?, ?, ?, ?, ?) " +
@@ -222,15 +249,23 @@ class TilstandsendringMonitor(
 
         fun oppdaterTimeout(vedtaksperiodeId: String, tilstand: String, timeout: Long) {
             using(sessionOf(dataSource)) {
-                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET timeout = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
-                    timeout, vedtaksperiodeId, tilstand).asExecute)
+                it.run(
+                    queryOf(
+                        "UPDATE vedtaksperiode_tilstand SET timeout = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
+                        timeout, vedtaksperiodeId, tilstand
+                    ).asExecute
+                )
             }
         }
 
         fun oppdaterAntallPåminnelser(vedtaksperiodeId: String, tilstand: String, antallPåminnelser: Int) {
             using(sessionOf(dataSource)) {
-                it.run(queryOf("UPDATE vedtaksperiode_tilstand SET antall_paminnelser = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
-                    antallPåminnelser, vedtaksperiodeId, tilstand).asExecute)
+                it.run(
+                    queryOf(
+                        "UPDATE vedtaksperiode_tilstand SET antall_paminnelser = ? WHERE vedtaksperiode_id = ? AND tilstand = ?",
+                        antallPåminnelser, vedtaksperiodeId, tilstand
+                    ).asExecute
+                )
             }
         }
 
@@ -260,6 +295,17 @@ class TilstandsendringMonitor(
             )
         }
 
+        fun hentHistoriskeEndringer(tilstandsendring: Tilstandsendring): List<Pair<String, String>> {
+            return using(sessionOf(dataSource)) {
+                it.run(queryOf(
+                    "SELECT forrige,gjeldende FROM vedtaksperiode_endret_historikk " +
+                            "WHERE vedtaksperiode_id = ?::uuid " +
+                            "ORDER BY endringstidspunkt DESC, endringstidspunkt_nanos DESC " +
+                            "LIMIT 2", tilstandsendring.vedtaksperiodeId
+                ).map { it.string("forrige") to it.string("gjeldende") }.asList)
+            }
+        }
+
         class HistoriskTilstandsendring(
             val tilstand: String,
             val antallPåminnelser: Int,
@@ -285,10 +331,11 @@ class TilstandsendringMonitor(
             val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
             val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
             val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
-            val makstid get() = packet["makstid"]
-                .asLocalDateTime()
-                .takeUnless { it == LocalDateTime.MAX }
-                ?: LocalDateTime.of(LocalDate.ofYearDay(9999, 1), LocalTime.MIN)
+            val makstid
+                get() = packet["makstid"]
+                    .asLocalDateTime()
+                    .takeUnless { it == LocalDateTime.MAX }
+                    ?: LocalDateTime.of(LocalDate.ofYearDay(9999, 1), LocalTime.MIN)
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
             val antallHendelseWarnings
                 get() = packet["aktivitetslogg.aktiviteter"]
