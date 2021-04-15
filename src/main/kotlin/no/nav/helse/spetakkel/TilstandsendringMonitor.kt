@@ -93,7 +93,7 @@ class TilstandsendringMonitor(
             )
             refreshCounters(tilstandsendring)
 
-            loopDetection(tilstandsendring, context)
+            loopDetection(tilstandsendring)
             val historiskTilstandsendring =
                 vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(tilstandsendring) ?: return
 
@@ -137,9 +137,11 @@ class TilstandsendringMonitor(
             )
         }
 
-        private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring, context: MessageContext) {
+        private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
             val historikk = vedtaksperiodeTilstandDao.hentHistoriskeEndringer(tilstandsendring)
             if (historikk.size != 2) return
+            if (tilstandsendring.forrigeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.gjeldendeTilstand == "AVVENTER_HISTORIKK") return
+            if (tilstandsendring.gjeldendeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.forrigeTilstand == "AVVENTER_HISTORIKK") return
             if (tilstandsendring.forrigeTilstand != historikk.last().first) return
             if (tilstandsendring.gjeldendeTilstand != historikk.last().second) return
             if (tilstandsendring.forrigeTilstand != historikk.first().second) return
