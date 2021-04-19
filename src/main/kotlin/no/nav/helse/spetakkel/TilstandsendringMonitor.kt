@@ -93,9 +93,9 @@ class TilstandsendringMonitor(
             )
             refreshCounters(tilstandsendring)
 
-            loopDetection(tilstandsendring)
             val historiskTilstandsendring =
                 vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(tilstandsendring) ?: return
+            loopDetection(tilstandsendring)
 
             val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
 
@@ -138,16 +138,11 @@ class TilstandsendringMonitor(
         }
 
         private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
-            val historikk = vedtaksperiodeTilstandDao.hentHistoriskeEndringer(tilstandsendring)
-            if (historikk.size != 2) return
+            if (vedtaksperiodeTilstandDao.antallLikeTilstandsendringer(tilstandsendring) < 3) return
             if (tilstandsendring.forrigeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.gjeldendeTilstand == "AVVENTER_HISTORIKK") return
             if (tilstandsendring.gjeldendeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.forrigeTilstand == "AVVENTER_HISTORIKK") return
-            if (tilstandsendring.forrigeTilstand != historikk.last().first) return
-            if (tilstandsendring.gjeldendeTilstand != historikk.last().second) return
-            if (tilstandsendring.forrigeTilstand != historikk.first().second) return
-            if (tilstandsendring.gjeldendeTilstand != historikk.first().first) return
-            sikkerLogg.error("{} går i loop mellom {} og {}!", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
-            log.error("{} går i loop mellom {} og {}!", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
+            sikkerLogg.error("{} går i loop mellom {} og {}‽", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
+            log.error("{} går i loop mellom {} og {}‽", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
         }
 
         private var lastRefreshTime = LocalDateTime.MIN
@@ -297,15 +292,18 @@ class TilstandsendringMonitor(
             )
         }
 
-        fun hentHistoriskeEndringer(tilstandsendring: Tilstandsendring): List<Pair<String, String>> {
-            return using(sessionOf(dataSource)) {
-                it.run(queryOf(
-                    "SELECT forrige,gjeldende FROM vedtaksperiode_endret_historikk " +
+        fun antallLikeTilstandsendringer(tilstandsendring: Tilstandsendring): Long {
+            return using(sessionOf(dataSource)) { session ->
+                session.run(queryOf(
+                    "SELECT count(1) as antall FROM vedtaksperiode_endret_historikk " +
                             "WHERE vedtaksperiode_id = ?::uuid " +
-                            "ORDER BY endringstidspunkt DESC, endringstidspunkt_nanos DESC " +
-                            "LIMIT 2", tilstandsendring.vedtaksperiodeId
-                ).map { it.string("forrige") to it.string("gjeldende") }.asList)
-            }
+                            "AND gjeldende = ? " +
+                            "AND forrige = ?",
+                    tilstandsendring.vedtaksperiodeId,
+                    tilstandsendring.gjeldendeTilstand,
+                    tilstandsendring.forrigeTilstand
+                ).map { it.long("antall") }.asSingle)
+            }!!
         }
 
         class HistoriskTilstandsendring(
