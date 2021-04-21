@@ -155,7 +155,7 @@ class TilstandsendringMonitor(
                 tilstandsendring.forrigeTilstand,
                 tilstandsendring.gjeldendeTilstand,
                 tilstandsendring.påGrunnAv,
-                if (tilstandsendring.harHendelseWarnings) "1" else "0",
+                if (tilstandsendring.harVedtaksperiodeWarnings) "1" else "0",
                 if (tilstandsendring.harHendelseWarnings) "1" else "0"
             ).inc()
 
