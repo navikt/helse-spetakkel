@@ -57,6 +57,7 @@ class TilstandsendringMonitor(
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
                     "gjeldendeTilstand", "aktivitetslogg.aktiviteter"
                 )
+                it.interestedIn("harVedtaksperiodeWarnings")
                 it.require("@opprettet", JsonNode::asLocalDateTime)
                 it.require("makstid", JsonNode::asLocalDateTime)
             }
@@ -154,7 +155,7 @@ class TilstandsendringMonitor(
                 tilstandsendring.forrigeTilstand,
                 tilstandsendring.gjeldendeTilstand,
                 tilstandsendring.påGrunnAv,
-                "0",
+                if (tilstandsendring.harHendelseWarnings) "1" else "0",
                 if (tilstandsendring.harHendelseWarnings) "1" else "0"
             ).inc()
 
@@ -342,6 +343,7 @@ class TilstandsendringMonitor(
                     .takeIf(JsonNode::isArray)
                     ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
                     ?.count() ?: 0
+            val harVedtaksperiodeWarnings get() = packet["harVedtaksperiodeWarnings"].takeIf(JsonNode::isBoolean)?.booleanValue() ?: false
             val harHendelseWarnings get() = antallHendelseWarnings > 0
         }
     }
