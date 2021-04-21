@@ -9,11 +9,11 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
         private val godkjenningsbehovløsningCounter =
             Counter.build("godkjenningsbehovlosning_totals", "Antall løste godkjenningsbehov")
-                .labelNames("periodetype", "inntektskilde", "harWarnings", "godkjent", "automatiskBehandling")
+                .labelNames("periodetype", "inntektskilde", "harWarnings", "godkjent", "automatiskBehandling", "forarsaketAvEventName")
                 .register()
         private val godkjenningsbehovCounter =
             Counter.build("godkjenningsbehov_totals", "Antall godkjenningsbehov")
-                .labelNames("periodetype", "inntektskilde", "harWarnings")
+                .labelNames("periodetype", "inntektskilde", "harWarnings", "forarsaketAvEventName")
                 .register()
     }
 
@@ -24,19 +24,19 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                 it.demandKey("@løsning")
                 it.demandValue("@final", true)
                 it.interestedIn("Godkjenning.warnings", "Godkjenning.periodetype", "Godkjenning.inntektskilde")
-                it.requireKey("@løsning.Godkjenning.godkjent", "@løsning.Godkjenning.automatiskBehandling")
+                it.requireKey("@løsning.Godkjenning.godkjent", "@løsning.Godkjenning.automatiskBehandling", "@forårsaket_av.event_name")
             }
         }.register(Godkjenningsbehovløsninger())
         River(rapidsConnection).apply {
             validate {
                 it.demandAll("@behov", listOf("Godkjenning"))
                 it.rejectKey("@løsning")
-                it.requireKey("Godkjenning.warnings", "Godkjenning.periodetype", "Godkjenning.inntektskilde")
+                it.requireKey("Godkjenning.warnings", "Godkjenning.periodetype", "Godkjenning.inntektskilde", "@forårsaket_av.event_name")
             }
         }.register(Godkjenningsbehov())
     }
 
-    private class Godkjenningsbehovløsninger() : River.PacketListener {
+    private class Godkjenningsbehovløsninger : River.PacketListener {
         override fun onError(problems: MessageProblems, context: MessageContext) {
             sikkerLogg.error("forstod ikke Godkjenningbehovløsning:\n${problems.toExtendedReport()}")
         }
@@ -49,12 +49,13 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                         .any { it.path("alvorlighetsgrad").asText() == "WARN" }
                 ) "1" else "0",
                 if (packet["@løsning.Godkjenning.godkjent"].asBoolean()) "1" else "0",
-                if (packet["@løsning.Godkjenning.automatiskBehandling"].asBoolean()) "1" else "0"
+                if (packet["@løsning.Godkjenning.automatiskBehandling"].asBoolean()) "1" else "0",
+                packet["@forårsaket_av.event_name"].asText()
             ).inc()
         }
     }
 
-    private class Godkjenningsbehov() : River.PacketListener {
+    private class Godkjenningsbehov : River.PacketListener {
         override fun onError(problems: MessageProblems, context: MessageContext) {
             sikkerLogg.error("forstod ikke Godkjenningbehov:\n${problems.toExtendedReport()}")
         }
@@ -65,7 +66,8 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                 packet["Godkjenning.inntektskilde"].asText(),
                 if (packet["Godkjenning.warnings"].path("aktiviteter")
                         .any { it.path("alvorlighetsgrad").asText() == "WARN" }
-                ) "1" else "0"
+                ) "1" else "0",
+                packet["@forårsaket_av.event_name"].asText()
             ).inc()
         }
     }

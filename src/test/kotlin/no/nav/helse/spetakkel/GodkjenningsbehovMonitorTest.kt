@@ -4,7 +4,9 @@ import io.prometheus.client.Collector
 import io.prometheus.client.CollectorRegistry
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 internal class GodkjenningsbehovMonitorTest {
@@ -13,6 +15,10 @@ internal class GodkjenningsbehovMonitorTest {
 
     init {
         GodkjenningsbehovMonitor(rapid)
+    }
+
+    @BeforeEach
+    fun clear() {
     }
 
     @Test
@@ -37,6 +43,38 @@ internal class GodkjenningsbehovMonitorTest {
         assertEquals(0, newSamples.count { it.name == "godkjenningsbehov_totals" })
     }
 
+    @Test
+    fun `ta med forårsaket_av event_name i godkjenningsbehovmetric`() {
+        val newSamples = forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov("behov")) }
+        val godkjenningsbehovløsningTotals = newSamples.single { it.name == "godkjenningsbehov_totals" }
+
+        assertEquals("behov", godkjenningsbehovløsningTotals.labelValue("forarsaketAvEventName"))
+    }
+
+    @Test
+    fun `ta med forårsaket_av event_name i godkjenningsbehovmetric 2`() {
+        val newSamples = forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov("påminnelse")) }
+        val godkjenningsbehovløsningTotals = newSamples.single { it.name == "godkjenningsbehov_totals" }
+
+        assertEquals("påminnelse", godkjenningsbehovløsningTotals.labelValue("forarsaketAvEventName"))
+    }
+
+    @Test
+    fun `ta med forårsaket_av event_name i godkjenningsbehovløsningmetric`() {
+        val newSamples = forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehovløsning("behov")) }
+        val godkjenningsbehovløsningTotals = newSamples.single { it.name == "godkjenningsbehovlosning_totals" }
+
+        assertEquals("behov", godkjenningsbehovløsningTotals.labelValue("forarsaketAvEventName"))
+    }
+
+    @Test
+    fun `ta med forårsaket_av event_name i godkjenningsbehovløsningmetric 2`() {
+        val newSamples = forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehovløsning("påminnelse")) }
+        val godkjenningsbehovløsningTotals = newSamples.single { it.name == "godkjenningsbehovlosning_totals" }
+
+        assertEquals("påminnelse", godkjenningsbehovløsningTotals.labelValue("forarsaketAvEventName"))
+    }
+
     private fun Collector.MetricFamilySamples.Sample.labelValue(labelName: String): String {
         assertTrue (labelName in labelNames, "Kan ikke finne metrikk med label $labelName i $labelNames")
         return labelValues[labelNames.indexOf(labelName)]
@@ -48,7 +86,8 @@ internal class GodkjenningsbehovMonitorTest {
         val after = CollectorRegistry.defaultRegistry.metricFamilySamples().toList().flatMap { it.samples }
 
         return after.map { valueAfter ->
-            val valueBefore = before.find { it == valueAfter } ?: return@map valueAfter
+            val valueBefore = before.find { it.name == valueAfter.name && it.labelValues == valueAfter.labelValues }
+                ?: return@map valueAfter
             Collector.MetricFamilySamples.Sample(
                 valueAfter.name,
                 valueAfter.labelNames,
@@ -56,16 +95,18 @@ internal class GodkjenningsbehovMonitorTest {
                 valueAfter.value - valueBefore.value
             )
         }.filter { it.value != 0.0 }
-
     }
 
     @Language("JSON")
-    private fun godkjenningsbehov() = """
+    private fun godkjenningsbehov(forårsaketAvEventName: String = "behov") = """
         {
           "@event_name": "behov",
           "@behov": [
             "Godkjenning"
           ],
+          "@forårsaket_av": {
+            "event_name": "$forårsaketAvEventName"
+          },
           "tilstand": "AVVENTER_GODKJENNING",
           "Godkjenning": {
             "periodetype": "OVERGANG_FRA_IT",
@@ -79,10 +120,13 @@ internal class GodkjenningsbehovMonitorTest {
     """
 
     @Language("JSON")
-    private fun godkjenningsbehovløsning() = """{
+    private fun godkjenningsbehovløsning(forårsaketAvEventName: String = "behov") = """{
       "@behov": [
         "Godkjenning"
       ],
+      "@forårsaket_av": {
+        "event_name": "$forårsaketAvEventName"
+      },
       "Godkjenning": {
         "periodetype": "FORLENGELSE",
         "inntektskilde": "EN_ARBEIDSGIVER",
