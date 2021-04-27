@@ -139,7 +139,7 @@ class TilstandsendringMonitor(
         }
 
         private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
-            if (vedtaksperiodeTilstandDao.antallLikeTilstandsendringer(tilstandsendring) < 3) return
+            if (vedtaksperiodeTilstandDao.antallLikeTilstandsendringer(tilstandsendring) < 4) return
             if (tilstandsendring.forrigeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.gjeldendeTilstand == "AVVENTER_HISTORIKK") return
             if (tilstandsendring.gjeldendeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.forrigeTilstand == "AVVENTER_HISTORIKK") return
             sikkerLogg.error("{} går i loop mellom {} og {}‽", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
