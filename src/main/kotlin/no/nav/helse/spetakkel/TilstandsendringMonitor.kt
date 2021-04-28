@@ -15,16 +15,17 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.temporal.ChronoUnit
+import java.util.*
 import javax.sql.DataSource
 
 class TilstandsendringMonitor(
-    rapidsConnection: RapidsConnection,
+    val rapidsConnection: RapidsConnection,
     vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao
 ) {
 
     private companion object {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
-        private val log = LoggerFactory.getLogger(TilstandsendringMonitor::class.java)
+        private val logg = LoggerFactory.getLogger(TilstandsendringMonitor::class.java)
         private val tilstandCounter = Counter.build(
             "vedtaksperiode_tilstander_totals",
             "Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra"
@@ -61,7 +62,7 @@ class TilstandsendringMonitor(
                 it.require("@opprettet", JsonNode::asLocalDateTime)
                 it.require("makstid", JsonNode::asLocalDateTime)
             }
-        }.register(Tilstandsendringer(vedtaksperiodeTilstandDao))
+        }.register(Tilstandsendringer(rapidsConnection, vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
             validate {
                 it.demandValue("@event_name", "planlagt_påminnelse")
@@ -77,7 +78,8 @@ class TilstandsendringMonitor(
         }.register(Påminnelser(vedtaksperiodeTilstandDao))
     }
 
-    private class Tilstandsendringer(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
+    private class Tilstandsendringer(private val rapidsConnection: RapidsConnection, private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) :
+        River.PacketListener {
 
         override fun onError(problems: MessageProblems, context: MessageContext) {
             sikkerLogg.error("forstod ikke vedtaksperiode_endret:\n${problems.toExtendedReport()}")
@@ -100,7 +102,7 @@ class TilstandsendringMonitor(
 
             val diff = historiskTilstandsendring.tidITilstand(tilstandsendring) ?: return
 
-            log.info(
+            logg.info(
                 "vedtaksperiode {} var i {} i {} ({}); gikk til {} {}",
                 keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
                 keyValue("tilstand", tilstandsendring.forrigeTilstand),
@@ -140,10 +142,40 @@ class TilstandsendringMonitor(
 
         private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
             if (vedtaksperiodeTilstandDao.antallLikeTilstandsendringer(tilstandsendring) < 4) return
-            if (tilstandsendring.forrigeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.gjeldendeTilstand == "AVVENTER_HISTORIKK") return
-            if (tilstandsendring.gjeldendeTilstand in listOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING") && tilstandsendring.forrigeTilstand == "AVVENTER_HISTORIKK") return
-            sikkerLogg.error("{} går i loop mellom {} og {}‽", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
-            log.error("{} går i loop mellom {} og {}‽", keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId), tilstandsendring.forrigeTilstand, tilstandsendring.gjeldendeTilstand)
+            if (tilstandsendring.forrigeTilstand in listOf(
+                    "AVVENTER_GODKJENNING",
+                    "AVVENTER_SIMULERING"
+                ) && tilstandsendring.gjeldendeTilstand == "AVVENTER_HISTORIKK"
+            ) return
+            if (tilstandsendring.gjeldendeTilstand in listOf(
+                    "AVVENTER_GODKJENNING",
+                    "AVVENTER_SIMULERING"
+                ) && tilstandsendring.forrigeTilstand == "AVVENTER_HISTORIKK"
+            ) return
+            rapidsConnection.publish(
+                JsonMessage.newMessage(
+                    mapOf(
+                        "@event_name" to "vedtaksperiode_i_loop",
+                        "@opprettet" to LocalDateTime.now(),
+                        "@id" to UUID.randomUUID(),
+                        "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
+                        "forrigeTilstand" to tilstandsendring.forrigeTilstand,
+                        "gjeldendeTilstand" to tilstandsendring.gjeldendeTilstand
+                    )
+                ).toJson()
+            )
+            logg.error(
+                "{} går i loop mellom {} og {}‽",
+                keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
+                tilstandsendring.forrigeTilstand,
+                tilstandsendring.gjeldendeTilstand
+            )
+            sikkerLogg.error(
+                "{} går i loop mellom {} og {}‽",
+                keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
+                tilstandsendring.forrigeTilstand,
+                tilstandsendring.gjeldendeTilstand
+            )
         }
 
         private var lastRefreshTime = LocalDateTime.MIN
@@ -167,7 +199,7 @@ class TilstandsendringMonitor(
         private fun refreshTilstandGauge() {
             val now = LocalDateTime.now()
             if (lastRefreshTime > now.minusSeconds(30)) return
-            log.info("Refreshing tilstand gauge")
+            logg.info("Refreshing tilstand gauge")
             TilstandType.values().forEach { tilstanderGauge.labels(it.name).set(0.0) }
             vedtaksperiodeTilstandDao.hentGjeldendeTilstander().forEach { (tilstand, count) ->
                 tilstanderGauge.labels(tilstand).set(count.toDouble())
@@ -295,15 +327,17 @@ class TilstandsendringMonitor(
 
         fun antallLikeTilstandsendringer(tilstandsendring: Tilstandsendring): Long {
             return using(sessionOf(dataSource)) { session ->
-                session.run(queryOf(
-                    "SELECT count(1) as antall FROM vedtaksperiode_endret_historikk " +
-                            "WHERE vedtaksperiode_id = ?::uuid " +
-                            "AND gjeldende = ? " +
-                            "AND forrige = ?",
-                    tilstandsendring.vedtaksperiodeId,
-                    tilstandsendring.gjeldendeTilstand,
-                    tilstandsendring.forrigeTilstand
-                ).map { it.long("antall") }.asSingle)
+                session.run(
+                    queryOf(
+                        "SELECT count(1) as antall FROM vedtaksperiode_endret_historikk " +
+                                "WHERE vedtaksperiode_id = ?::uuid " +
+                                "AND gjeldende = ? " +
+                                "AND forrige = ?",
+                        tilstandsendring.vedtaksperiodeId,
+                        tilstandsendring.gjeldendeTilstand,
+                        tilstandsendring.forrigeTilstand
+                    ).map { it.long("antall") }.asSingle
+                )
             }!!
         }
 
