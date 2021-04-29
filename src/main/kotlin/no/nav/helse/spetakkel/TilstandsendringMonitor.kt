@@ -164,20 +164,6 @@ class TilstandsendringMonitor(
                     )
                 ).toJson()
             )
-
-            //TODO: Disse blir erstattet av kafkameldingen over. Kan fjernes når vi har verifisert at spammer fanger opp meldingene. Se https://trello.com/c/0L78TgLc
-            logg.error(
-                "{} går i loop mellom {} og {}‽",
-                keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
-                tilstandsendring.forrigeTilstand,
-                tilstandsendring.gjeldendeTilstand
-            )
-            sikkerLogg.error(
-                "{} går i loop mellom {} og {}‽",
-                keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
-                tilstandsendring.forrigeTilstand,
-                tilstandsendring.gjeldendeTilstand
-            )
         }
 
         private var lastRefreshTime = LocalDateTime.MIN
