@@ -75,7 +75,6 @@ class TilstandsendringMonitorTest {
             )
         )
 
-        assertEquals(0, logCollector.list.count { it.message.contains("går i loop mellom") })
         assertFalse(meldinger().any { it["@event_name"].asText() == "vedtaksperiode_i_loop" })
     }
 
@@ -139,12 +138,6 @@ class TilstandsendringMonitorTest {
             )
         )
 
-        assertEquals(
-            1,
-            logCollector.list.count { it.formattedMessage.contains("går i loop mellom AVVENTER_INNTEKTSMELDING_UFERDIG_GAP og AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP") })
-        assertEquals(
-            1,
-            logCollector.list.count { it.formattedMessage.contains("går i loop mellom AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP og AVVENTER_INNTEKTSMELDING_UFERDIG_GAP") })
         assertEquals(2, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size);
         val loopMelding = meldinger().first { it["@event_name"].asText() == "vedtaksperiode_i_loop" }
         assertEquals("AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP", loopMelding["forrigeTilstand"].asText());
