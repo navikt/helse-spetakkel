@@ -6,7 +6,6 @@ import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 internal class GodkjenningsbehovMonitorTest {
@@ -15,10 +14,6 @@ internal class GodkjenningsbehovMonitorTest {
 
     init {
         GodkjenningsbehovMonitor(rapid)
-    }
-
-    @BeforeEach
-    fun clear() {
     }
 
     @Test
@@ -41,6 +36,22 @@ internal class GodkjenningsbehovMonitorTest {
         assertEquals("FORLENGELSE", godkjenningsbehovløsningTotals.labelValue("periodetype"))
         assertEquals("EN_ARBEIDSGIVER", godkjenningsbehovløsningTotals.labelValue("inntektskilde"))
         assertEquals(0, newSamples.count { it.name == "godkjenningsbehov_totals" })
+    }
+
+    @Test
+    fun `ta med utbetalingtype i løsning-metrikk`() {
+        val newSamples = forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehovløsning(utbetalingtype = "REVURDERING")) }
+        val godkjenningsbehovløsningTotals = newSamples.single { it.name == "godkjenningsbehovlosning_totals" }
+
+        assertEquals("REVURDERING", godkjenningsbehovløsningTotals.labelValue("utbetalingtype"))
+    }
+
+    @Test
+    fun `ta med utbetalingtype i behov-metrikk`() {
+        val newSamples = forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(utbetalingtype = "REVURDERING")) }
+        val godkjenningsbehovTotals = newSamples.single { it.name == "godkjenningsbehov_totals" }
+
+        assertEquals("REVURDERING", godkjenningsbehovTotals.labelValue("utbetalingtype"))
     }
 
     @Test
@@ -98,7 +109,7 @@ internal class GodkjenningsbehovMonitorTest {
     }
 
     @Language("JSON")
-    private fun godkjenningsbehov(forårsaketAvEventName: String = "behov") = """
+    private fun godkjenningsbehov(forårsaketAvEventName: String = "behov", utbetalingtype: String = "UTBETALING") = """
         {
           "@event_name": "behov",
           "@behov": [
@@ -109,6 +120,7 @@ internal class GodkjenningsbehovMonitorTest {
           },
           "tilstand": "AVVENTER_GODKJENNING",
           "Godkjenning": {
+            "utbetalingtype": "$utbetalingtype",
             "periodetype": "OVERGANG_FRA_IT",
             "inntektskilde": "FLERE_ARBEIDSGIVERE",
             "warnings": {
@@ -120,7 +132,7 @@ internal class GodkjenningsbehovMonitorTest {
     """
 
     @Language("JSON")
-    private fun godkjenningsbehovløsning(forårsaketAvEventName: String = "behov") = """{
+    private fun godkjenningsbehovløsning(forårsaketAvEventName: String = "behov", utbetalingtype: String = "UTBETALING") = """{
       "@behov": [
         "Godkjenning"
       ],
@@ -128,6 +140,7 @@ internal class GodkjenningsbehovMonitorTest {
         "event_name": "$forårsaketAvEventName"
       },
       "Godkjenning": {
+        "utbetalingtype": "$utbetalingtype",
         "periodetype": "FORLENGELSE",
         "inntektskilde": "EN_ARBEIDSGIVER",
         "warnings": {
