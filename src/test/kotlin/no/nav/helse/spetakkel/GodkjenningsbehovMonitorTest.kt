@@ -1,6 +1,6 @@
 package no.nav.helse.spetakkel
 
-import io.prometheus.client.Collector
+import io.prometheus.client.Collector.MetricFamilySamples.Sample
 import io.prometheus.client.CollectorRegistry
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
@@ -86,12 +86,52 @@ internal class GodkjenningsbehovMonitorTest {
         assertEquals("påminnelse", godkjenningsbehovløsningTotals.labelValue("forarsaketAvEventName"))
     }
 
-    private fun Collector.MetricFamilySamples.Sample.labelValue(labelName: String): String {
+    @Test
+    fun `skiller mellom opprinnelig godkjenningsbehov og resending som følge av påminnelse`() {
+        fun assertNullEllerEn(tall: String, sample: List<Sample>) =
+            assertEquals(
+                tall,
+                sample.single { it.name == "godkjenningsbehov_totals" }.labelValue("resendingAvGodkjenningsbehov")
+            )
+
+        fun assertMarkertSomResending(sample: List<Sample>) = assertNullEllerEn("1", sample)
+        fun assertIkkeMarkertSomResending(sample: List<Sample>) = assertNullEllerEn("0", sample)
+
+        // Påminnelse fører til Sykepengehistorikk-behov, som fører til Godkjenning-behov
+        val samples =
+            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = listOf("Sykepengehistorikk"))) }
+        assertMarkertSomResending(samples)
+
+        // Påminnelse kan også bruke cachet sykepengehistorikk og trigge Godkjenning-behov direkte
+        val niceSamples =
+            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = listOf("påminnelse"))) }
+        assertMarkertSomResending(niceSamples)
+
+        // Hvis det er null utbetaling i perioden hopper man over Simulering - går derfor rett fra Ytelser til Godkjenning
+        val ytelserBehov = listOf("Foreldrepenger",
+            "Pleiepenger",
+            "Omsorgspenger",
+            "Opplæringspenger",
+            "Institusjonsopphold",
+            "Arbeidsavklaringspenger",
+            "Dagpenger",
+            "Dødsinfo")
+        val moreSamples =
+            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = ytelserBehov)) }
+        assertIkkeMarkertSomResending(moreSamples)
+
+        // Vanlig løype - svar på Simulering trigger Godkjenning-behov
+        val newSamples =
+            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = listOf("Simulering"))) }
+        assertIkkeMarkertSomResending(newSamples)
+    }
+
+    private fun Sample.labelValue(labelName: String): String {
         assertTrue (labelName in labelNames, "Kan ikke finne metrikk med label $labelName i $labelNames")
         return labelValues[labelNames.indexOf(labelName)]
     }
 
-    private fun forskjellerIMetrikker(block: () -> Unit): List<Collector.MetricFamilySamples.Sample> {
+    private fun forskjellerIMetrikker(block: () -> Unit): List<Sample> {
         val before = CollectorRegistry.defaultRegistry.metricFamilySamples().toList().flatMap { it.samples }
         block()
         val after = CollectorRegistry.defaultRegistry.metricFamilySamples().toList().flatMap { it.samples }
@@ -99,7 +139,7 @@ internal class GodkjenningsbehovMonitorTest {
         return after.map { valueAfter ->
             val valueBefore = before.find { it.name == valueAfter.name && it.labelValues == valueAfter.labelValues }
                 ?: return@map valueAfter
-            Collector.MetricFamilySamples.Sample(
+            Sample(
                 valueAfter.name,
                 valueAfter.labelNames,
                 valueAfter.labelValues,
@@ -109,13 +149,14 @@ internal class GodkjenningsbehovMonitorTest {
     }
 
     @Language("JSON")
-    private fun godkjenningsbehov(forårsaketAvEventName: String = "behov", utbetalingtype: String = "UTBETALING") = """
+    private fun godkjenningsbehov(forårsaketAvEventName: String = "behov", utbetalingtype: String = "UTBETALING", forårsaketAvBehov: List<String> = listOf("Simulering")) = """
         {
           "@event_name": "behov",
           "@behov": [
             "Godkjenning"
           ],
           "@forårsaket_av": {
+            "behov": [${forårsaketAvBehov.joinToString { """"$it"""" }}],
             "event_name": "$forårsaketAvEventName"
           },
           "tilstand": "AVVENTER_GODKJENNING",

@@ -1,5 +1,6 @@
 package no.nav.helse.spetakkel
 
+import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
@@ -13,7 +14,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                 .register()
         private val godkjenningsbehovCounter =
             Counter.build("godkjenningsbehov_totals", "Antall godkjenningsbehov")
-                .labelNames("periodetype", "utbetalingtype", "inntektskilde", "harWarnings", "forarsaketAvEventName")
+                .labelNames("periodetype", "utbetalingtype", "inntektskilde", "harWarnings", "forarsaketAvEventName", "resendingAvGodkjenningsbehov")
                 .register()
     }
 
@@ -33,7 +34,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                 it.demandAll("@behov", listOf("Godkjenning"))
                 it.rejectKey("@løsning")
                 it.requireAny("Godkjenning.utbetalingtype", listOf("UTBETALING", "REVURDERING"))
-                it.requireKey("Godkjenning.warnings", "Godkjenning.periodetype", "Godkjenning.inntektskilde", "@forårsaket_av.event_name")
+                it.requireKey("Godkjenning.warnings", "Godkjenning.periodetype", "Godkjenning.inntektskilde", "@forårsaket_av.event_name", "@forårsaket_av.behov")
             }
         }.register(Godkjenningsbehov())
     }
@@ -71,8 +72,25 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection) {
                 if (packet["Godkjenning.warnings"].path("aktiviteter")
                         .any { it.path("alvorlighetsgrad").asText() == "WARN" }
                 ) "1" else "0",
-                packet["@forårsaket_av.event_name"].asText()
+                packet["@forårsaket_av.event_name"].asText(),
+                if (erOpprinneligGodkjenningsbehov(packet)) "0" else "1",
             ).inc()
         }
+
+        private fun erOpprinneligGodkjenningsbehov(packet: JsonMessage) =
+            packet["@forårsaket_av.behov"]
+                .map(JsonNode::asText)
+                .let { behov -> behov.all { it == "Simulering" } || historikkbehovene.containsAll(behov) }
+
+        private val historikkbehovene: List<String> = listOf(
+            "Foreldrepenger",
+            "Pleiepenger",
+            "Omsorgspenger",
+            "Opplæringspenger",
+            "Institusjonsopphold",
+            "Arbeidsavklaringspenger",
+            "Dagpenger",
+            "Dødsinfo",
+        )
     }
 }
