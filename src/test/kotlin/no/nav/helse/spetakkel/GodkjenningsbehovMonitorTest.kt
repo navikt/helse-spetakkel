@@ -7,13 +7,15 @@ import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.*
 
 internal class GodkjenningsbehovMonitorTest {
 
     val rapid = TestRapid()
+    private val dataSource = setupDataSourceMedFlyway()
 
     init {
-        GodkjenningsbehovMonitor(rapid)
+        GodkjenningsbehovMonitor(rapid, GodkjenningsbehovDao(dataSource))
     }
 
     @Test
@@ -149,7 +151,12 @@ internal class GodkjenningsbehovMonitorTest {
     }
 
     @Language("JSON")
-    private fun godkjenningsbehov(forårsaketAvEventName: String = "behov", utbetalingtype: String = "UTBETALING", forårsaketAvBehov: List<String> = listOf("Simulering")) = """
+    private fun godkjenningsbehov(
+        forårsaketAvEventName: String = "behov",
+        utbetalingtype: String = "UTBETALING",
+        vedtaksperiodeId: UUID = UUID.randomUUID(),
+        forårsaketAvBehov: List<String> = listOf("Simulering")
+    ) = """
         {
           "@event_name": "behov",
           "@behov": [
@@ -160,6 +167,7 @@ internal class GodkjenningsbehovMonitorTest {
             "event_name": "$forårsaketAvEventName"
           },
           "tilstand": "AVVENTER_GODKJENNING",
+          "vedtaksperiodeId": "$vedtaksperiodeId",
           "Godkjenning": {
             "utbetalingtype": "$utbetalingtype",
             "periodetype": "OVERGANG_FRA_IT",
