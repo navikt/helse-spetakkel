@@ -1,12 +1,15 @@
 package no.nav.helse.spetakkel
 
-import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
+import kotliquery.queryOf
+import kotliquery.sessionOf
 import no.nav.helse.rapids_rivers.*
+import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.util.*
+import javax.sql.DataSource
 
-internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, godkjenningsbehovDao: GodkjenningsbehovDao) {
+internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, dataSource: DataSource) {
     private companion object {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
         private val godkjenningsbehovløsningCounter =
@@ -63,7 +66,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, godk
                     "vedtaksperiodeId",
                 )
             }
-        }.register(Godkjenningsbehov(godkjenningsbehovDao))
+        }.register(Godkjenningsbehov(dataSource))
     }
 
     private class Godkjenningsbehovløsninger : River.PacketListener {
@@ -86,13 +89,12 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, godk
         }
     }
 
-    private class Godkjenningsbehov(private val godkjenningsbehovDao: GodkjenningsbehovDao) : River.PacketListener {
+    private class Godkjenningsbehov(private val dataSource: DataSource) : River.PacketListener {
         override fun onError(problems: MessageProblems, context: MessageContext) {
             sikkerLogg.error("forstod ikke Godkjenningbehov:\n${problems.toExtendedReport()}")
         }
 
         override fun onPacket(packet: JsonMessage, context: MessageContext) {
-            populerDuplikatTabell(packet)
             godkjenningsbehovCounter.labels(
                 packet["Godkjenning.periodetype"].asText(),
                 packet["Godkjenning.utbetalingtype"].asText(),
@@ -105,25 +107,16 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, godk
             ).inc()
         }
 
-        private fun erOpprinneligGodkjenningsbehov(packet: JsonMessage) =
-            packet["@forårsaket_av.behov"]
-                .map(JsonNode::asText)
-                .let { behov -> behov.all { it == "Simulering" } || historikkbehovene.containsAll(behov) }
 
-        private val historikkbehovene: List<String> = listOf(
-            "Foreldrepenger",
-            "Pleiepenger",
-            "Omsorgspenger",
-            "Opplæringspenger",
-            "Institusjonsopphold",
-            "Arbeidsavklaringspenger",
-            "Dagpenger",
-            "Dødsinfo",
-        )
-
-        private fun populerDuplikatTabell(packet: JsonMessage): Boolean {
+        private fun erOpprinneligGodkjenningsbehov(packet: JsonMessage): Boolean {
             val vedtaksperiodeId = packet["vedtaksperiodeId"].asText().let(UUID::fromString)
-            return godkjenningsbehovDao.erOpprinneligGodkjenningsbehov(vedtaksperiodeId)
+            return sessionOf(dataSource).use {
+                @Language("PostgreSQL")
+                val query = "INSERT INTO vedtaksperiode_godkjenningsbehov_duplikatsjekk (vedtaksperiode_id) VALUES (?) ON CONFLICT DO NOTHING;"
+                it.run(
+                    queryOf(query, vedtaksperiodeId).asUpdate
+                ) > 0
+            }
         }
 
     }

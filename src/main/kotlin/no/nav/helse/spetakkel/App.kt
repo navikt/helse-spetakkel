@@ -18,7 +18,7 @@ fun main() {
         TidITilstandMonitor(this)
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
-        GodkjenningsbehovMonitor(this, GodkjenningsbehovDao(dataSource))
+        GodkjenningsbehovMonitor(this, dataSource)
         UtbetaltMonitor(this)
         MedlemskapMonitor(this)
         BehovUtenLøsningMonitor(this)

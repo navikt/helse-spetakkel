@@ -15,7 +15,7 @@ internal class GodkjenningsbehovMonitorTest {
     private val dataSource = setupDataSourceMedFlyway()
 
     init {
-        GodkjenningsbehovMonitor(rapid, GodkjenningsbehovDao(dataSource))
+        GodkjenningsbehovMonitor(rapid, dataSource)
     }
 
     @Test
@@ -90,42 +90,29 @@ internal class GodkjenningsbehovMonitorTest {
 
     @Test
     fun `skiller mellom opprinnelig godkjenningsbehov og resending som følge av påminnelse`() {
-        fun assertNullEllerEn(tall: String, sample: List<Sample>) =
+        fun assertMarkertSomResending(tall: String, sample: List<Sample>) =
             assertEquals(
                 tall,
                 sample.single { it.name == "godkjenningsbehov_totals" }.labelValue("resendingAvGodkjenningsbehov")
             )
 
-        fun assertMarkertSomResending(sample: List<Sample>) = assertNullEllerEn("1", sample)
-        fun assertIkkeMarkertSomResending(sample: List<Sample>) = assertNullEllerEn("0", sample)
 
-        // Påminnelse fører til Sykepengehistorikk-behov, som fører til Godkjenning-behov
+        val vedtaksperiodeId = UUID.randomUUID()
+
         val samples =
-            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = listOf("Sykepengehistorikk"))) }
-        assertMarkertSomResending(samples)
+            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(vedtaksperiodeId = vedtaksperiodeId)) }
+        assertMarkertSomResending("0", samples)
 
-        // Påminnelse kan også bruke cachet sykepengehistorikk og trigge Godkjenning-behov direkte
-        val niceSamples =
-            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = listOf("påminnelse"))) }
-        assertMarkertSomResending(niceSamples)
-
-        // Hvis det er null utbetaling i perioden hopper man over Simulering - går derfor rett fra Ytelser til Godkjenning
-        val ytelserBehov = listOf("Foreldrepenger",
-            "Pleiepenger",
-            "Omsorgspenger",
-            "Opplæringspenger",
-            "Institusjonsopphold",
-            "Arbeidsavklaringspenger",
-            "Dagpenger",
-            "Dødsinfo")
-        val moreSamples =
-            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = ytelserBehov)) }
-        assertIkkeMarkertSomResending(moreSamples)
-
-        // Vanlig løype - svar på Simulering trigger Godkjenning-behov
-        val newSamples =
-            forskjellerIMetrikker { rapid.sendTestMessage(godkjenningsbehov(forårsaketAvBehov = listOf("Simulering"))) }
-        assertIkkeMarkertSomResending(newSamples)
+        val samples2 =
+            forskjellerIMetrikker {
+                rapid.sendTestMessage(
+                    godkjenningsbehov(
+                        vedtaksperiodeId = vedtaksperiodeId,
+                        forårsaketAvBehov = listOf("påminnelse")
+                    )
+                )
+            }
+        assertMarkertSomResending("1", samples2)
     }
 
     private fun Sample.labelValue(labelName: String): String {
