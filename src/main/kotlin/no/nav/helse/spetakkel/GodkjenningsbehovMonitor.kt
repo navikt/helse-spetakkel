@@ -62,7 +62,6 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, data
                     "Godkjenning.periodetype",
                     "Godkjenning.inntektskilde",
                     "@forårsaket_av.event_name",
-                    "@forårsaket_av.behov",
                     "vedtaksperiodeId",
                 )
             }
