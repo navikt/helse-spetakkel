@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.7.1"
+val testcontainersVersion = "1.16.2"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
@@ -19,12 +20,14 @@ dependencies {
     implementation("com.github.seratch:kotliquery:1.3.1")
 
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
-
-    testImplementation("com.opentable.components:otj-pg-embedded:0.13.3")
-
+    
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion")
+
+    testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
+    testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
 }
 
 repositories {

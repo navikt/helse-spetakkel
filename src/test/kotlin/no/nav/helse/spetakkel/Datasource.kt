@@ -1,17 +1,18 @@
 package no.nav.helse.spetakkel
 
-import com.opentable.db.postgres.embedded.EmbeddedPostgres
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
+import org.testcontainers.containers.PostgreSQLContainer
 import javax.sql.DataSource
 
 
 internal fun setupDataSourceMedFlyway(): DataSource {
+    val postgres = PostgreSQLContainer<Nothing>("postgres:13").also { it.start() }
     val hikariConfig = HikariConfig().apply {
-        this.jdbcUrl = EmbeddedPostgres.builder()
-            .start()
-            .getJdbcUrl("postgres", "postgres")
+        jdbcUrl = postgres.jdbcUrl
+        username = postgres.username
+        password = postgres.password
         maximumPoolSize = 3
         minimumIdle = 1
         idleTimeout = 10001
