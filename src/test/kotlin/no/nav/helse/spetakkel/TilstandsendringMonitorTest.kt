@@ -3,6 +3,8 @@ package no.nav.helse.spetakkel
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import kotliquery.queryOf
+import kotliquery.sessionOf
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -27,6 +29,14 @@ class TilstandsendringMonitorTest {
     @BeforeEach
     fun setUp() {
         logCollector.list.clear()
+    }
+
+    @Test
+    fun `avstemming`() {
+        rapid.sendTestMessage(avstemmingmelding())
+        assertEquals(2, sessionOf(dataSource).use {
+            it.run(queryOf("SELECT COUNT(1) FROM vedtaksperiode_tilstand").map { it.long(1) }.asSingle)
+        })
     }
 
     @Test
@@ -177,6 +187,36 @@ class TilstandsendringMonitorTest {
   "makstid": "${LocalDateTime.MAX}",
   "aktørId": "$aktørId",
   "fødselsnummer": "$fødselsnummer"
+}
+"""
+
+    @Language("JSON")
+    private fun avstemmingmelding() = """
+{
+  "@event_name": "person_avstemt",
+  "@id": "${UUID.randomUUID()}",
+  "@opprettet": "${LocalDateTime.now()}",
+  "aktørId": "11",
+  "fødselsnummer": "22",
+  "arbeidsgivere": [
+    {
+      "organisasjonsnummer": "987654321",
+      "vedtaksperioder": [
+        {
+          "id": "${UUID.randomUUID()}",
+          "tilstand": "AVVENTER_HISTORIKK",
+          "tidsstempel": "${LocalDateTime.now()}"
+        }
+      ],
+      "forkastedeVedtaksperioder": [
+        {
+          "id": "${UUID.randomUUID()}",
+          "tilstand": "TIL_INFOTRYGD",
+          "tidsstempel": "${LocalDateTime.now()}"
+        }
+      ]
+    }
+  ]
 }
 """
 }

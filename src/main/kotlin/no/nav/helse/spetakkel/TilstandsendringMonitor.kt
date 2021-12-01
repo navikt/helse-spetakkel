@@ -65,6 +65,22 @@ class TilstandsendringMonitor(
         }.register(Tilstandsendringer(rapidsConnection, vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
             validate {
+                it.demandValue("@event_name", "person_avstemt")
+                it.requireKey("fødselsnummer")
+                it.requireArray("arbeidsgivere") {
+                    requireArray("vedtaksperioder") {
+                        requireKey("id", "tilstand")
+                        require("tidsstempel", JsonNode::asLocalDateTime)
+                    }
+                    requireArray("forkastedeVedtaksperioder") {
+                        requireKey("id", "tilstand")
+                        require("tidsstempel", JsonNode::asLocalDateTime)
+                    }
+                }
+            }
+        }.register(Avstemmingsresuiltat(rapidsConnection, vedtaksperiodeTilstandDao))
+        River(rapidsConnection).apply {
+            validate {
                 it.demandValue("@event_name", "planlagt_påminnelse")
                 it.requireKey("vedtaksperiodeId", "tilstand", "endringstidspunkt", "påminnelsetidspunkt", "er_avsluttet")
                 it.require("endringstidspunkt", JsonNode::asLocalDateTime)
@@ -76,6 +92,29 @@ class TilstandsendringMonitor(
                 it.requireKey("vedtaksperiodeId", "tilstand", "antallGangerPåminnet")
             }
         }.register(Påminnelser(vedtaksperiodeTilstandDao))
+    }
+
+    private class Avstemmingsresuiltat(private val rapidsConnection: RapidsConnection, private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
+        override fun onPacket(packet: JsonMessage, context: MessageContext) {
+            val antallEndringer = packet["arbeidsgivere"].sumOf { arbeidsgiver ->
+                arbeidsgiver.path("vedtaksperioder").filter { vedtaksperiode ->
+                    vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(
+                        vedtaksperiode.path("id").asText(),
+                        vedtaksperiode.path("tilstand").asText(),
+                        vedtaksperiode.path("tidsstempel").asLocalDateTime()
+                    )
+                }.size + arbeidsgiver.path("forkastedeVedtaksperioder").filter { vedtaksperiode ->
+                    vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(
+                        vedtaksperiode.path("id").asText(),
+                        vedtaksperiode.path("tilstand").asText(),
+                        vedtaksperiode.path("tidsstempel").asLocalDateTime()
+                    )
+                }.size
+            }
+
+            if (antallEndringer == 0) return
+            sikkerLogg.info("Oppdaterte tilstand på $antallEndringer vedtaksperioder for person ${packet["fødselsnummer"].asText()}")
+        }
     }
 
     private class Tilstandsendringer(private val rapidsConnection: RapidsConnection, private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) :
@@ -261,6 +300,38 @@ class TilstandsendringMonitor(
                             ).asExecute
                         )
                     }
+                }
+            }
+        }
+
+        fun lagreEllerOppdaterTilstand(vedtaksperiodeId: String, tilstand: String, tidspunkt: LocalDateTime): Boolean {
+            return using(sessionOf(dataSource)) { session ->
+                session.transaction { tx ->
+                    val gjeldende = hentGjeldendeTilstand(tx, vedtaksperiodeId)
+                    if (gjeldende != null && gjeldende.tilstand == tilstand) return@transaction false
+                    tx.run(
+                        queryOf(
+                            "INSERT INTO vedtaksperiode_tilstand (vedtaksperiode_id, tilstand, makstid, " +
+                                    "endringstidspunkt, endringstidspunkt_nanos) " +
+                                    "VALUES (?, ?, ?, ?, ?) " +
+                                    "ON CONFLICT (vedtaksperiode_id) DO " +
+                                    "UPDATE SET " +
+                                    "tilstand=EXCLUDED.tilstand, " +
+                                    "timeout=0, " +
+                                    "makstid=EXCLUDED.makstid, " +
+                                    "antall_paminnelser=0, " +
+                                    "endringstidspunkt=EXCLUDED.endringstidspunkt, " +
+                                    "endringstidspunkt_nanos=EXCLUDED.endringstidspunkt_nanos " +
+                                    "WHERE (vedtaksperiode_tilstand.endringstidspunkt < EXCLUDED.endringstidspunkt) " +
+                                    "   OR (vedtaksperiode_tilstand.endringstidspunkt = EXCLUDED.endringstidspunkt AND vedtaksperiode_tilstand.endringstidspunkt_nanos < EXCLUDED.endringstidspunkt_nanos)",
+                            vedtaksperiodeId,
+                            tilstand,
+                            LocalDateTime.of(LocalDate.ofYearDay(9999, 1), LocalTime.MIN),
+                            tidspunkt,
+                            tidspunkt.nano
+                        ).asExecute
+                    )
+                    true
                 }
             }
         }
