@@ -191,6 +191,9 @@ class TilstandsendringMonitor(
                     "AVVENTER_SIMULERING"
                 ) && tilstandsendring.forrigeTilstand == "AVVENTER_HISTORIKK"
             ) return
+            if (tilstandsendring.gjeldendeTilstand == "AVSLUTTET_UTEN_UTBETALING"
+                && tilstandsendring.forrigeTilstand == "AVSLUTTET_UTEN_UTBETALING"
+            ) return
             rapidsConnection.publish(
                 JsonMessage.newMessage(
                     mapOf(
