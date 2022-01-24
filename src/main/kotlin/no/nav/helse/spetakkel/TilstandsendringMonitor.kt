@@ -3,12 +3,10 @@ package no.nav.helse.spetakkel
 import com.fasterxml.jackson.databind.JsonNode
 import io.prometheus.client.Counter
 import io.prometheus.client.Gauge
-import kotliquery.TransactionalSession
-import kotliquery.queryOf
-import kotliquery.sessionOf
-import kotliquery.using
+import kotliquery.*
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
+import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -389,18 +387,49 @@ class TilstandsendringMonitor(
 
         fun antallLikeTilstandsendringer(tilstandsendring: Tilstandsendring): Long {
             return using(sessionOf(dataSource)) { session ->
+                val nullstillingstidspunkt =
+                    finnForrigeRevurderingstidspunkt(session, tilstandsendring) ?: LocalDateTime.of(1814, 5, 17, 11, 0)
+
+                @Language("PostgreSQL")
+                val statement = """
+                    SELECT count(1) as antall
+                    FROM vedtaksperiode_endret_historikk
+                    WHERE vedtaksperiode_id = ?::uuid
+                      AND gjeldende = ?
+                      AND forrige = ?
+                      AND endringstidspunkt > ?
+                """
                 session.run(
                     queryOf(
-                        "SELECT count(1) as antall FROM vedtaksperiode_endret_historikk " +
-                                "WHERE vedtaksperiode_id = ?::uuid " +
-                                "AND gjeldende = ? " +
-                                "AND forrige = ?",
+                        statement,
                         tilstandsendring.vedtaksperiodeId,
                         tilstandsendring.gjeldendeTilstand,
-                        tilstandsendring.forrigeTilstand
+                        tilstandsendring.forrigeTilstand,
+                        nullstillingstidspunkt,
                     ).map { it.long("antall") }.asSingle
                 )
             }!!
+        }
+
+        private fun finnForrigeRevurderingstidspunkt(
+            session: Session,
+            tilstandsendring: Tilstandsendring,
+        ): LocalDateTime? {
+            @Language("PostgreSQL")
+            val statement = """
+                SELECT endringstidspunkt
+                FROM vedtaksperiode_endret_historikk
+                WHERE vedtaksperiode_id = ?::UUID
+                    AND gjeldende = 'AVVENTER_HISTORIKK_REVURDERING'
+                ORDER BY endringstidspunkt desc
+                LIMIT 1
+            """
+            return session.run(
+                queryOf(
+                    statement,
+                    tilstandsendring.vedtaksperiodeId,
+                ).map { it.localDateTime("endringstidspunkt") }.asSingle
+            )
         }
 
         class HistoriskTilstandsendring(

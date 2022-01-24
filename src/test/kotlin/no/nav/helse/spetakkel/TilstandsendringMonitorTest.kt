@@ -157,6 +157,54 @@ class TilstandsendringMonitorTest {
 
     }
 
+    @Test
+    fun `revurdering og overstyring nullstiller loop-telleren`() {
+        val vedtaksperiodeId = UUID.randomUUID()
+        fun sendTilstandsendringer(startsted: String, vararg tilstander: String) {
+            tilstander.forEachIndexed { index, tilstand ->
+                if (index == 0) {
+                    rapid.sendTestMessage(
+                        vedtaksperiodeEndret(
+                            vedtaksperiodeId = vedtaksperiodeId,
+                            forrigeTilstand = startsted,
+                            gjeldendeTilstand = tilstand
+                        )
+                    )
+                } else if (index != tilstander.size - 1) {
+                    rapid.sendTestMessage(
+                        vedtaksperiodeEndret(
+                            vedtaksperiodeId = vedtaksperiodeId,
+                            forrigeTilstand = tilstand,
+                            gjeldendeTilstand = tilstander[index+1]
+                        )
+                    )
+                }
+            }
+        }
+
+        sendTilstandsendringer(
+            "Avsluttet",
+
+            "AVVENTER_ARBEIDSGIVERE_REVURDERING",
+            "AVVENTER_HISTORIKK_REVURDERING",
+            "AVVENTER_GJENNOMFØRT_REVURDERING",
+
+            "AVVENTER_ARBEIDSGIVERE_REVURDERING",
+            "AVVENTER_HISTORIKK_REVURDERING",
+            "AVVENTER_GJENNOMFØRT_REVURDERING",
+
+            "AVVENTER_ARBEIDSGIVERE_REVURDERING",
+            "AVVENTER_HISTORIKK_REVURDERING",
+            "AVVENTER_GJENNOMFØRT_REVURDERING",
+
+            "AVVENTER_ARBEIDSGIVERE_REVURDERING",
+            "AVVENTER_HISTORIKK_REVURDERING",
+            "AVVENTER_GJENNOMFØRT_REVURDERING",
+        )
+
+        assertEquals(0, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size);
+    }
+
     private fun meldinger() = (0 until rapid.inspektør.size).map { rapid.inspektør.message(it) }
 
 
