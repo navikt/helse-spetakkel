@@ -15,7 +15,7 @@ internal class Infotrygdendringer(rapidsConnection: RapidsConnection) : River.Pa
 
     init {
         River(rapidsConnection).apply {
-            validate { it.demandValue("@event_name", "infotrygdendting") }
+            validate { it.demandValue("@event_name", "infotrygdendring") }
         }.register(this)
     }
 
