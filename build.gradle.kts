@@ -12,7 +12,7 @@ val githubUser: String by project
 val githubPassword: String by project
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:2022.03.28-20.54.89f957fff8f2")
+    implementation("com.github.navikt:rapids-and-rivers:2022.03.30-21.22.dbaa41649bd3")
 
     implementation("org.flywaydb:flyway-core:8.5.5")
     implementation("com.zaxxer:HikariCP:5.0.1")
