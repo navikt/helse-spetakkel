@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
 import org.testcontainers.containers.PostgreSQLContainer
+import java.time.Duration
 import javax.sql.DataSource
 
 
@@ -13,11 +14,10 @@ internal fun setupDataSourceMedFlyway(): DataSource {
         jdbcUrl = postgres.jdbcUrl
         username = postgres.username
         password = postgres.password
-        maximumPoolSize = 3
-        minimumIdle = 1
-        idleTimeout = 10001
-        connectionTimeout = 1000
-        maxLifetime = 30001
+        maximumPoolSize = 1
+        connectionTimeout = Duration.ofSeconds(5).toMillis()
+        maxLifetime = Duration.ofMinutes(30).toMillis()
+        initializationFailTimeout = Duration.ofMinutes(1).toMillis()
     }
 
     val dataSource = HikariDataSource(hikariConfig)

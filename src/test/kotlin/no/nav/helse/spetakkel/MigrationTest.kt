@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.PostgreSQLContainer
+import java.time.Duration
 
 internal class MigrationTest {
 
@@ -21,11 +22,10 @@ internal class MigrationTest {
             jdbcUrl = postgres.jdbcUrl
             username = postgres.username
             password = postgres.password
-            maximumPoolSize = 3
-            minimumIdle = 1
-            idleTimeout = 10001
-            connectionTimeout = 1000
-            maxLifetime = 30001
+            maximumPoolSize = 1
+            connectionTimeout = Duration.ofSeconds(5).toMillis()
+            maxLifetime = Duration.ofMinutes(30).toMillis()
+            initializationFailTimeout = Duration.ofMinutes(1).toMillis()
         }
     }
 
@@ -38,11 +38,10 @@ internal class MigrationTest {
     private fun createHikariConfig(jdbcUrl: String) =
         HikariConfig().apply {
             this.jdbcUrl = jdbcUrl
-            maximumPoolSize = 3
-            minimumIdle = 1
-            idleTimeout = 10001
-            connectionTimeout = 1000
-            maxLifetime = 30001
+            maximumPoolSize = 1
+            connectionTimeout = Duration.ofSeconds(5).toMillis()
+            maxLifetime = Duration.ofMinutes(30).toMillis()
+            initializationFailTimeout = Duration.ofMinutes(1).toMillis()
         }
 
     @AfterEach
