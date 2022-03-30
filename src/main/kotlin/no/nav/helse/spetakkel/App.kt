@@ -4,7 +4,6 @@ import no.nav.helse.rapids_rivers.RapidApplication
 import no.nav.helse.rapids_rivers.RapidsConnection
 import kotlin.time.ExperimentalTime
 
-@ExperimentalTime
 fun main() {
     val env = System.getenv()
     val dataSourceBuilder = DataSourceBuilder(env)
@@ -15,7 +14,6 @@ fun main() {
         EventMonitor(this)
         AktivitetsloggMonitor(this)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
-        TidITilstandMonitor(this)
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
         GodkjenningsbehovMonitor(this, dataSource)

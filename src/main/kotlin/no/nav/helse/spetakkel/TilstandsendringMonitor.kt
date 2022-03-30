@@ -148,33 +148,6 @@ class TilstandsendringMonitor(
                 tilstandsendring.gjeldendeTilstand,
                 tilstandsendring.endringstidspunkt.format(ISO_LOCAL_DATE_TIME)
             )
-            context.publish(
-                JsonMessage.newMessage(
-                    mapOf(
-                        "@event_name" to "vedtaksperiode_tid_i_tilstand",
-                        "aktørId" to tilstandsendring.aktørId,
-                        "fødselsnummer" to tilstandsendring.fødselsnummer,
-                        "organisasjonsnummer" to tilstandsendring.organisasjonsnummer,
-                        "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
-                        "tilstand" to tilstandsendring.forrigeTilstand,
-                        "nyTilstand" to tilstandsendring.gjeldendeTilstand,
-                        "starttid" to historiskTilstandsendring.endringstidspunkt,
-                        "sluttid" to tilstandsendring.endringstidspunkt,
-                        "antall_paminnelser" to historiskTilstandsendring.antallPåminnelser,
-                        "makstid" to historiskTilstandsendring.makstid,
-                        "timeout_første_påminnelse" to historiskTilstandsendring.timeout,
-                        "endret_tilstand_på_grunn_av" to packet["@forårsaket_av"],
-                        "tid_i_tilstand" to diff
-                    )
-                ).toJson().also {
-                    sikkerLogg.info(
-                        "sender event=vedtaksperiode_tid_i_tilstand for {} i {}:\n\t{}",
-                        keyValue("vedtaksperiodeId", tilstandsendring.vedtaksperiodeId),
-                        keyValue("tilstand", tilstandsendring.forrigeTilstand),
-                        it
-                    )
-                }
-            )
         }
 
         private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
