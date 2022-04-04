@@ -151,7 +151,7 @@ class TilstandsendringMonitor(
         }
 
         private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
-            if (vedtaksperiodeTilstandDao.antallLikeTilstandsendringer(tilstandsendring) < 4) return
+            if (vedtaksperiodeTilstandDao.antallLikeTilstandsendringer(tilstandsendring) < 10) return
             if (tilstandsendring.forrigeTilstand in listOf(
                     "AVVENTER_GODKJENNING",
                     "AVVENTER_SIMULERING"

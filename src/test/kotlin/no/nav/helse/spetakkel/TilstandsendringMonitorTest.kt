@@ -40,113 +40,47 @@ class TilstandsendringMonitorTest {
     }
 
     @Test
-    fun `Sender ikke varsel ved mindre enn 4 loops`() {
+    fun `Sender ikke varsel ved mindre enn 10 loops`() {
         val vedtaksperiodeId = UUID.randomUUID()
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
+        repeat(9) {
+            rapid.sendTestMessage(
+                vedtaksperiodeEndret(
+                    vedtaksperiodeId = vedtaksperiodeId,
+                    forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
+                )
             )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
+            rapid.sendTestMessage(
+                vedtaksperiodeEndret(
+                    vedtaksperiodeId = vedtaksperiodeId,
+                    forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
+                )
             )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
-            )
-        )
+        }
 
         assertFalse(meldinger().any { it["@event_name"].asText() == "vedtaksperiode_i_loop" })
     }
 
     @Test
-    fun `Sender varsel ved mer enn eller lik 4 loops`() {
+    fun `Sender varsel ved mer enn eller lik 10 loops`() {
         val vedtaksperiodeId = UUID.randomUUID()
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
+        repeat(10) {
+            rapid.sendTestMessage(
+                vedtaksperiodeEndret(
+                    vedtaksperiodeId = vedtaksperiodeId,
+                    forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
+                )
             )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
+            rapid.sendTestMessage(
+                vedtaksperiodeEndret(
+                    vedtaksperiodeId = vedtaksperiodeId,
+                    forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
+                )
             )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
-            )
-        )
-        rapid.sendTestMessage(
-            vedtaksperiodeEndret(
-                vedtaksperiodeId = vedtaksperiodeId,
-                forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
-            )
-        )
+        }
 
         assertEquals(2, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size);
         val loopMelding = meldinger().first { it["@event_name"].asText() == "vedtaksperiode_i_loop" }
