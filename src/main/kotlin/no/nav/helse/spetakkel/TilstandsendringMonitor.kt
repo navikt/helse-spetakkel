@@ -54,7 +54,7 @@ class TilstandsendringMonitor(
                 it.requireKey(
                     "@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
-                    "gjeldendeTilstand", "aktivitetslogg.aktiviteter"
+                    "gjeldendeTilstand"
                 )
                 it.interestedIn("harVedtaksperiodeWarnings")
                 it.require("@opprettet", JsonNode::asLocalDateTime)
@@ -436,11 +436,7 @@ class TilstandsendringMonitor(
                     .takeUnless { it == LocalDateTime.MAX }
                     ?: LocalDateTime.of(LocalDate.ofYearDay(9999, 1), LocalTime.MIN)
             val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
-            val antallHendelseWarnings
-                get() = packet["aktivitetslogg.aktiviteter"]
-                    .takeIf(JsonNode::isArray)
-                    ?.filter { it["alvorlighetsgrad"].asText() == "WARN" }
-                    ?.count() ?: 0
+            val antallHendelseWarnings = 0
             val harVedtaksperiodeWarnings get() = packet["harVedtaksperiodeWarnings"].takeIf(JsonNode::isBoolean)?.booleanValue() ?: false
             val harHendelseWarnings get() = antallHendelseWarnings > 0
         }
