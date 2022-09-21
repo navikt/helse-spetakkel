@@ -23,8 +23,7 @@ internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River
             validate {
                 it.requireValue("@event_name", "aktivitetslogg_ny_aktivitet")
                 it.requireArray("aktiviteter") {
-                    requireAny("nivå", Nivå.values().map { nivå -> nivå.toString() })
-                    requireKey("melding")
+                    requireKey("nivå", "melding")
                 }
             }
         }.register(this)
@@ -33,6 +32,9 @@ internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         packet["aktiviteter"]
             .takeIf(JsonNode::isArray)
+            ?.filter {
+                it.path("nivå").asText() in Nivå.values().map(Enum<*>::name)
+            }
             ?.map {
                 Nivå.valueOf(it.path("nivå").asText()) to it
             }
@@ -44,6 +46,7 @@ internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River
 
     enum class Nivå {
         INFO,
+        BEHOV,
         VARSEL,
         FUNKSJONELL_FEIL,
         LOGISK_FEIL;
