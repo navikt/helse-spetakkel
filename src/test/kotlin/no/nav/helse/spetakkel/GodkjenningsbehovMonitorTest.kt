@@ -209,10 +209,6 @@ internal class GodkjenningsbehovMonitorTest {
     "periodetype": "FORLENGELSE",
     "utbetalingtype": "$utbetalingtype",
     "inntektskilde": "EN_ARBEIDSGIVER",
-    "warnings": {
-      "aktiviteter": [],
-      "kontekster": []
-    },
     "aktiveVedtaksperioder": [
       {
         "orgnummer": "947064649",

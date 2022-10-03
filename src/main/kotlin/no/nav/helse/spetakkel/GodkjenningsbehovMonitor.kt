@@ -58,7 +58,6 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, data
                 it.rejectKey("@løsning")
                 it.requireAny("Godkjenning.utbetalingtype", listOf("UTBETALING", "REVURDERING"))
                 it.requireKey(
-                    "Godkjenning.warnings",
                     "Godkjenning.periodetype",
                     "Godkjenning.inntektskilde",
                     "@forårsaket_av.event_name",
@@ -98,9 +97,7 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, data
                 packet["Godkjenning.periodetype"].asText(),
                 packet["Godkjenning.utbetalingtype"].asText(),
                 packet["Godkjenning.inntektskilde"].asText(),
-                if (packet["Godkjenning.warnings"].path("aktiviteter")
-                        .any { it.path("alvorlighetsgrad").asText() == "WARN" }
-                ) "1" else "0",
+                "0",
                 packet["@forårsaket_av.event_name"].asText(),
                 if (erOpprinneligGodkjenningsbehov(packet)) "0" else "1",
             ).inc()
