@@ -30,26 +30,21 @@ spec:
   prometheus:
     enabled: true
     path: /metrics
-  webproxy: true
   kafka:
     pool: nav-prod
   secureLogs:
     enabled: true
-  vault:
-    enabled: true
-    paths:
-      - mountPath: /var/run/secrets/nais.io/service_user
-        kvPath: /serviceuser/data/prod/srvspetakkel
+  gcp:
+    sqlInstances:
+      - type: POSTGRES_14
+        diskAutoresize: true
+        pointInTimeRecovery: true
+        name: spetakkel
+        databases:
+          - name: spetakkel
+            envVarPrefix: DATABASE
   env:
   - name: KAFKA_CONSUMER_GROUP_ID
     value: tbd-spetakkel-v1
   - name: KAFKA_RAPID_TOPIC
     value: tbd.rapid.v1
-  - name: DATABASE_HOST
-    value: a01dbvl011.adeo.no
-  - name: DATABASE_PORT
-    value: "5432"
-  - name: DATABASE_NAME
-    value: spetakkel
-  - name: VAULT_MOUNTPATH
-    value: postgresql/prod-fss/

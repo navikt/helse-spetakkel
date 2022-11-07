@@ -36,16 +36,16 @@ jobs:
       uses: nais/deploy/actions/deploy@v1
       env:
         APIKEY: ${{ secrets.NAIS_DEPLOY_APIKEY }}
-        CLUSTER: dev-fss
+        CLUSTER: dev-gcp
         RESOURCE: deploy/dev.yml
         WAIT: false
         VAR: "image=${{env.IMAGE}},tag=${{env.TAG}},team=${{env.TEAM}},app=${{env.APP}}"
-    - name: deploy to prod
-      uses: nais/deploy/actions/deploy@v1
-      env:
-        APIKEY: ${{ secrets.NAIS_DEPLOY_APIKEY }}
-        CLUSTER: prod-fss
-        RESOURCE: deploy/prod.yml
-        WAIT: false
-        VAR: "image=${{env.IMAGE}},tag=${{env.TAG}},team=${{env.TEAM}},app=${{env.APP}}"
+#    - name: deploy to prod
+#      uses: nais/deploy/actions/deploy@v1
+#      env:
+#        APIKEY: ${{ secrets.NAIS_DEPLOY_APIKEY }}
+#        CLUSTER: prod-gcp
+#        RESOURCE: deploy/prod.yml
+#        WAIT: false
+#        VAR: "image=${{env.IMAGE}},tag=${{env.TAG}},team=${{env.TEAM}},app=${{env.APP}}"
 
