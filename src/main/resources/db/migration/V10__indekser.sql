@@ -1,0 +1,1 @@
+create index if not exists idx_vedtaksperiode_tilstand on vedtaksperiode_tilstand(tilstand);
