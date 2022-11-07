@@ -1,0 +1,2 @@
+create index if not exists idx_vedtaksperiode_endret_historikk_gjeldende on vedtaksperiode_endret_historikk(vedtaksperiode_id,gjeldende);
+drop index idx_vedtaksperiode_endret_historikk_id;
