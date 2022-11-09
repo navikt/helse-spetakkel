@@ -199,7 +199,7 @@ class TilstandsendringMonitor(
 
         private fun refreshTilstandGauge() {
             val now = LocalDateTime.now()
-            if (lastRefreshTime > now.minusSeconds(30)) return
+            if (lastRefreshTime > now.minusMinutes(15)) return
             logg.info("Refreshing tilstand gauge")
             TilstandType.values().forEach { tilstanderGauge.labels(it.name).set(0.0) }
             vedtaksperiodeTilstandDao.hentGjeldendeTilstander().forEach { (tilstand, count) ->
