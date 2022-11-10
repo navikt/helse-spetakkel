@@ -1,23 +1,20 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-val junitJupiterVersion = "5.8.2"
-val testcontainersVersion = "1.16.3"
+val junitJupiterVersion = "5.9.0"
+val testcontainersVersion = "1.17.4"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
-    kotlin("jvm") version "1.6.0"
+    kotlin("jvm") version "1.7.20"
 }
 
-val githubUser: String by project
-val githubPassword: String by project
-
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:2022.04.05-09.40.11a466d7ac70")
+    implementation("com.github.navikt:rapids-and-rivers:2022110411121667556720.8a951a765583")
 
-    implementation("org.flywaydb:flyway-core:8.5.5")
+    implementation("org.flywaydb:flyway-core:9.7.0")
     implementation("com.zaxxer:HikariCP:5.0.1")
-    implementation("no.nav:vault-jdbc:1.3.9")
-    implementation("com.github.seratch:kotliquery:1.7.0")
+    implementation("org.postgresql:postgresql:42.5.0")
+    implementation("com.github.seratch:kotliquery:1.9.0")
 
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
 
@@ -26,8 +23,6 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion")
 
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
-    testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
-    testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
 }
 
 repositories {

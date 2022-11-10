@@ -14,7 +14,7 @@ internal fun setupDataSourceMedFlyway(): DataSource {
         jdbcUrl = postgres.jdbcUrl
         username = postgres.username
         password = postgres.password
-        maximumPoolSize = 1
+        maximumPoolSize = 2
         connectionTimeout = Duration.ofSeconds(5).toMillis()
         maxLifetime = Duration.ofMinutes(30).toMillis()
         initializationFailTimeout = Duration.ofMinutes(1).toMillis()
