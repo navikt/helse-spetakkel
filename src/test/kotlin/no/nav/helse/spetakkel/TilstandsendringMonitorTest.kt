@@ -187,14 +187,16 @@ class TilstandsendringMonitorTest {
         {
           "id": "${UUID.randomUUID()}",
           "tilstand": "AVVENTER_HISTORIKK",
-          "tidsstempel": "${LocalDateTime.now()}"
+          "opprettet": "${LocalDateTime.now()}",
+          "oppdatert": "${LocalDateTime.now()}"
         }
       ],
       "forkastedeVedtaksperioder": [
         {
           "id": "${UUID.randomUUID()}",
           "tilstand": "TIL_INFOTRYGD",
-          "tidsstempel": "${LocalDateTime.now()}"
+          "opprettet": "${LocalDateTime.now()}",
+          "oppdatert": "${LocalDateTime.now()}"
         }
       ]
     }
