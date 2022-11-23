@@ -68,11 +68,11 @@ class TilstandsendringMonitor(
                 it.requireArray("arbeidsgivere") {
                     requireArray("vedtaksperioder") {
                         requireKey("id", "tilstand")
-                        require("tidsstempel", JsonNode::asLocalDateTime)
+                        require("oppdatert", JsonNode::asLocalDateTime)
                     }
                     requireArray("forkastedeVedtaksperioder") {
                         requireKey("id", "tilstand")
-                        require("tidsstempel", JsonNode::asLocalDateTime)
+                        require("oppdatert", JsonNode::asLocalDateTime)
                     }
                 }
             }
@@ -99,13 +99,13 @@ class TilstandsendringMonitor(
                     vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(
                         vedtaksperiode.path("id").asText(),
                         vedtaksperiode.path("tilstand").asText(),
-                        vedtaksperiode.path("tidsstempel").asLocalDateTime()
+                        vedtaksperiode.path("oppdatert").asLocalDateTime()
                     )
                 }.size + arbeidsgiver.path("forkastedeVedtaksperioder").filter { vedtaksperiode ->
                     vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(
                         vedtaksperiode.path("id").asText(),
                         vedtaksperiode.path("tilstand").asText(),
-                        vedtaksperiode.path("tidsstempel").asLocalDateTime()
+                        vedtaksperiode.path("oppdatert").asLocalDateTime()
                     )
                 }.size
             }
