@@ -13,6 +13,7 @@ fun main() {
     RapidApplication.create(env).apply {
         EventMonitor(this)
         AktivitetsloggMonitor(this)
+        RevurderingIgangsattMonitor(this)
         TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
