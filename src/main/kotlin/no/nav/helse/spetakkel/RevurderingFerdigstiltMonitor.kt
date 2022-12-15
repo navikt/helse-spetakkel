@@ -10,7 +10,7 @@ internal class RevurderingFerdigstiltMonitor(rapidsConnection: RapidsConnection)
 
     private companion object {
         private val revurderingerFerdigstilt = Counter.build("revurdering_ferdigstilt", "Antall revurderinger ferdigstilt")
-            .labelNames("status")
+            .labelNames("hvorfor", "status")
             .register()
     }
 
@@ -18,12 +18,12 @@ internal class RevurderingFerdigstiltMonitor(rapidsConnection: RapidsConnection)
         River(rapidsConnection).apply {
             validate {
                 it.requireValue("@event_name", "revurdering_ferdigstilt")
-                it.requireKey("status")
+                it.requireKey("status", "årsak")
             }
         }.register(this)
     }
 
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
-        revurderingerFerdigstilt.labels(packet["status"].asText()).inc()
+        revurderingerFerdigstilt.labels(packet["årsak"].asText(), packet["status"].asText()).inc()
     }
 }
