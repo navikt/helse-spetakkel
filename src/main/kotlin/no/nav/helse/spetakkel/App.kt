@@ -2,7 +2,6 @@ package no.nav.helse.spetakkel
 
 import no.nav.helse.rapids_rivers.RapidApplication
 import no.nav.helse.rapids_rivers.RapidsConnection
-import kotlin.time.ExperimentalTime
 
 fun main() {
     val env = System.getenv()
@@ -19,7 +18,6 @@ fun main() {
         VedtaksperiodePåminnetMonitor(this)
         BehovMonitor(this)
         GodkjenningsbehovMonitor(this, dataSource)
-        UtbetaltMonitor(this)
         MedlemskapMonitor(this)
         BehovUtenLøsningMonitor(this)
     }.apply {
