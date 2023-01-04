@@ -9,11 +9,11 @@ plugins {
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:2022110411121667556720.8a951a765583")
+    implementation("com.github.navikt:rapids-and-rivers:2022111011111668075098.65e508dcde8b")
 
-    implementation("org.flywaydb:flyway-core:9.7.0")
+    implementation("org.flywaydb:flyway-core:9.10.2")
     implementation("com.zaxxer:HikariCP:5.0.1")
-    implementation("org.postgresql:postgresql:42.5.0")
+    implementation("org.postgresql:postgresql:42.5.1")
     implementation("com.github.seratch:kotliquery:1.9.0")
 
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
