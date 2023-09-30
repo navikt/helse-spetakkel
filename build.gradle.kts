@@ -1,19 +1,19 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-val junitJupiterVersion = "5.9.0"
-val testcontainersVersion = "1.17.4"
+val junitJupiterVersion = "5.10.0"
+val testcontainersVersion = "1.19.0"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
-    kotlin("jvm") version "1.7.20"
+    kotlin("jvm") version "1.9.10"
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:2022111011111668075098.65e508dcde8b")
+    implementation("com.github.navikt:rapids-and-rivers:2023093008351696055717.ffdec6aede3d")
 
     implementation("org.flywaydb:flyway-core:9.10.2")
     implementation("com.zaxxer:HikariCP:5.0.1")
-    implementation("org.postgresql:postgresql:42.5.1")
+    implementation("org.postgresql:postgresql:42.6.0")
     implementation("com.github.seratch:kotliquery:1.9.0")
 
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
@@ -43,9 +43,8 @@ tasks {
 
         doLast {
             configurations.runtimeClasspath.get().forEach {
-                val file = File("$buildDir/libs/${it.name}")
-                if (!file.exists())
-                    it.copyTo(file)
+                val file = File("${layout.buildDirectory.get()}/libs/${it.name}")
+                if (!file.exists()) it.copyTo(file)
             }
         }
     }
@@ -66,6 +65,6 @@ tasks {
     }
 
     withType<Wrapper> {
-        gradleVersion = "7.4.1"
+        gradleVersion = "8.3"
     }
 }
