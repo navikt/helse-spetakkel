@@ -1,12 +1,12 @@
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
-  name: {{app}}
+  name: spetakkel
   namespace: tbd
   labels:
-    team: {{team}}
+    team: tbd
 spec:
-  image: {{image}}:{{tag}}
+  image: {{image}}
   port: 8080
   strategy:
     type: Recreate
@@ -18,11 +18,10 @@ spec:
     initialDelay: 5
   resources:
     limits:
-      cpu: 2000m
       memory: 512Mi
     requests:
       cpu: 50m
-      memory: 128Mi
+      memory: 64Mi
   replicas:
     min: 1
     max: 6

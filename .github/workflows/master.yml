@@ -5,49 +5,41 @@ on:
     branches:
     - master
 
-env:
-  APP: spetakkel
-  TEAM: tbd
-  IMAGE: ghcr.io/${{ github.repository }}/spetakkel
-
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      packages: write
+      id-token: write
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-java@v2
+    - uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
-        java-version: '17.x'
+        java-version: '21.x'
         cache: 'gradle'
-    - name: create docker tag
-      run: echo "TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
     - name: test and build
-      run: ./gradlew test build
-    - name: build docker image
-      run: docker build . --pull -t ${{ env.IMAGE }}:${{ env.TAG }}
-    - name: push docker image
-      run: |
-        echo "$GITHUB_TOKEN" | docker login --username "$GITHUB_REPOSITORY" --password-stdin ghcr.io
-        docker push ${{ env.IMAGE }}:${{ env.TAG }}
+      run: ./gradlew build
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ORG_GRADLE_PROJECT_githubPassword: ${{ secrets.GITHUB_TOKEN }}
+    - name: build docker image
+      uses: nais/docker-build-push@v0
+      id: docker-build-push
+      with:
+        team: tbd
+        project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+        identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
     - name: deploy to dev
       uses: nais/deploy/actions/deploy@v1
       env:
         APIKEY: ${{ secrets.NAIS_DEPLOY_APIKEY }}
         CLUSTER: dev-gcp
         RESOURCE: deploy/dev.yml
-        WAIT: false
-        VAR: "image=${{env.IMAGE}},tag=${{env.TAG}},team=${{env.TEAM}},app=${{env.APP}}"
+        IMAGE: ${{ steps.docker-build-push.outputs.image }}
     - name: deploy to prod
       uses: nais/deploy/actions/deploy@v1
       env:
         APIKEY: ${{ secrets.NAIS_DEPLOY_APIKEY }}
         CLUSTER: prod-gcp
         RESOURCE: deploy/prod.yml
-        WAIT: false
-        VAR: "image=${{env.IMAGE}},tag=${{env.TAG}},team=${{env.TEAM}},app=${{env.APP}}"
+        IMAGE: ${{ steps.docker-build-push.outputs.image }}
 
