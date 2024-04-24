@@ -171,6 +171,7 @@ class TilstandsendringMonitor(
                         "@event_name" to "vedtaksperiode_i_loop",
                         "@opprettet" to LocalDateTime.now(),
                         "@id" to UUID.randomUUID(),
+                        "fødselsnummer" to tilstandsendring.fødselsnummer,
                         "vedtaksperiodeId" to tilstandsendring.vedtaksperiodeId,
                         "forrigeTilstand" to tilstandsendring.forrigeTilstand,
                         "gjeldendeTilstand" to tilstandsendring.gjeldendeTilstand
