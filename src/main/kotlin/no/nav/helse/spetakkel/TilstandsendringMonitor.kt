@@ -152,19 +152,6 @@ class TilstandsendringMonitor(
 
         private fun loopDetection(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
             if (vedtaksperiodeTilstandDao.antallLikeTilstandsendringer(tilstandsendring) < 10) return
-            if (tilstandsendring.forrigeTilstand in listOf(
-                    "AVVENTER_GODKJENNING",
-                    "AVVENTER_SIMULERING"
-                ) && tilstandsendring.gjeldendeTilstand == "AVVENTER_HISTORIKK"
-            ) return
-            if (tilstandsendring.gjeldendeTilstand in listOf(
-                    "AVVENTER_GODKJENNING",
-                    "AVVENTER_SIMULERING"
-                ) && tilstandsendring.forrigeTilstand == "AVVENTER_HISTORIKK"
-            ) return
-            if (tilstandsendring.gjeldendeTilstand == "AVSLUTTET_UTEN_UTBETALING"
-                && tilstandsendring.forrigeTilstand == "AVSLUTTET_UTEN_UTBETALING"
-            ) return
             rapidsConnection.publish(
                 JsonMessage.newMessage(
                     mapOf(
@@ -359,10 +346,18 @@ class TilstandsendringMonitor(
             )
         }
 
+        private fun ignorerTilstandsendringerMellom(tilstandsendring: Tilstandsendring, fraTilstander: Set<String>, tilTilstand: String): Boolean {
+            return (tilstandsendring.forrigeTilstand in fraTilstander && tilstandsendring.gjeldendeTilstand == tilTilstand) ||
+                    (tilstandsendring.gjeldendeTilstand in fraTilstander && tilstandsendring.forrigeTilstand == tilTilstand)
+        }
+
         fun antallLikeTilstandsendringer(tilstandsendring: Tilstandsendring): Long {
-            return using(sessionOf(dataSource)) { session ->
-                val nullstillingstidspunkt =
-                    finnForrigeRevurderingstidspunkt(session, tilstandsendring) ?: LocalDateTime.of(1814, 5, 17, 11, 0)
+            // bryr oss ikke om perioder som reberegner utbetalingen
+            if (ignorerTilstandsendringerMellom(tilstandsendring, setOf("AVVENTER_GODKJENNING", "AVVENTER_SIMULERING"), "AVVENTER_HISTORIKK")) return 0
+            if (ignorerTilstandsendringerMellom(tilstandsendring, setOf("AVVENTER_GODKJENNING_REVURDERING", "AVVENTER_SIMULERING_REVURDERING"), "AVVENTER_HISTORIKK_REVURDERING")) return 0
+
+            return sessionOf(dataSource).use { session ->
+                val nullstillingstidspunkt = tilstandsendring.endringstidspunkt.minusMinutes(60)
 
                 @Language("PostgreSQL")
                 val statement = """
@@ -383,27 +378,6 @@ class TilstandsendringMonitor(
                     ).map { it.long("antall") }.asSingle
                 )
             }!!
-        }
-
-        private fun finnForrigeRevurderingstidspunkt(
-            session: Session,
-            tilstandsendring: Tilstandsendring,
-        ): LocalDateTime? {
-            @Language("PostgreSQL")
-            val statement = """
-                SELECT endringstidspunkt
-                FROM vedtaksperiode_endret_historikk
-                WHERE vedtaksperiode_id = ?::UUID
-                    AND gjeldende = 'AVVENTER_HISTORIKK_REVURDERING'
-                ORDER BY endringstidspunkt desc
-                LIMIT 1
-            """
-            return session.run(
-                queryOf(
-                    statement,
-                    tilstandsendring.vedtaksperiodeId,
-                ).map { it.localDateTime("endringstidspunkt") }.asSingle
-            )
         }
 
         class HistoriskTilstandsendring(
