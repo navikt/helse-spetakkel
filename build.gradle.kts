@@ -1,5 +1,5 @@
 val junitJupiterVersion = "5.10.2"
-val testcontainersVersion = "1.19.5"
+val tbdLibsVersion = "2024.04.30-10.57-21d60764"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
@@ -19,7 +19,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
+    testImplementation("com.github.navikt.tbd-libs:postgres-testdatabaser:$tbdLibsVersion")
 }
 
 repositories {

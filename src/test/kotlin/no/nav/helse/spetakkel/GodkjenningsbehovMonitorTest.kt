@@ -1,21 +1,32 @@
 package no.nav.helse.spetakkel
 
+import com.github.navikt.tbd_libs.test_support.TestDataSource
 import io.prometheus.client.Collector.MetricFamilySamples.Sample
 import io.prometheus.client.CollectorRegistry
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.*
 
 internal class GodkjenningsbehovMonitorTest {
 
-    private val rapid = TestRapid()
-    private val dataSource = setupDataSourceMedFlyway()
+    private lateinit var rapid: TestRapid
+    private lateinit var dataSource: TestDataSource
 
-    init {
-        GodkjenningsbehovMonitor(rapid, dataSource)
+    @BeforeEach
+    fun setup() {
+        rapid = TestRapid()
+        dataSource = databaseContainer.nyTilkobling()
+        GodkjenningsbehovMonitor(rapid, dataSource.ds)
+    }
+
+    @AfterEach
+    fun teardown() {
+        databaseContainer.droppTilkobling(dataSource)
     }
 
     @Test

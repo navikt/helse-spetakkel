@@ -1,40 +1,38 @@
 package no.nav.helse.spetakkel
 
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
+import com.github.navikt.tbd_libs.test_support.TestDataSource
 import kotliquery.queryOf
 import kotliquery.sessionOf
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.util.*
 
 class TilstandsendringMonitorTest {
-    private val rapid = TestRapid()
-    private val logCollector = ListAppender<ILoggingEvent>()
-    private val dataSource = setupDataSourceMedFlyway()
-
-    init {
-        TilstandsendringMonitor(rapid, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
-        (LoggerFactory.getLogger(TilstandsendringMonitor::class.java) as Logger).addAppender(logCollector)
-        logCollector.start()
-    }
+    private lateinit var rapid: TestRapid
+    private lateinit var dataSource: TestDataSource
 
     @BeforeEach
-    fun setUp() {
-        logCollector.list.clear()
+    fun setup() {
+        rapid = TestRapid()
+        dataSource = databaseContainer.nyTilkobling()
+        TilstandsendringMonitor(rapid, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource.ds))
+    }
+
+    @AfterEach
+    fun teardown() {
+        databaseContainer.droppTilkobling(dataSource)
     }
 
     @Test
     fun `avstemming`() {
         rapid.sendTestMessage(avstemmingmelding())
-        assertEquals(2, sessionOf(dataSource).use {
+        assertEquals(2, sessionOf(dataSource.ds).use {
             it.run(queryOf("SELECT COUNT(1) FROM vedtaksperiode_tilstand").map { it.long(1) }.asSingle)
         })
     }
@@ -88,7 +86,6 @@ class TilstandsendringMonitorTest {
         assertEquals("AVVENTER_INNTEKTSMELDING_UFERDIG_GAP", loopMelding["gjeldendeTilstand"].asText());
         assertEquals(vedtaksperiodeId.toString(), loopMelding["vedtaksperiodeId"].asText());
         assertEquals("vedtaksperiode_i_loop", loopMelding["@event_name"].asText());
-
     }
 
     @Test
