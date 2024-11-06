@@ -161,7 +161,6 @@ internal class GodkjenningsbehovMonitorTest {
     "Godkjenning"
   ],
   "meldingsreferanseId": "1dad39b0-f0d9-495b-a110-357d2397d7e0",
-  "aktørId": "2902991512385",
   "fødselsnummer": "10047502468",
   "organisasjonsnummer": "947064649",
   "vedtaksperiodeId": "$vedtaksperiodeId",

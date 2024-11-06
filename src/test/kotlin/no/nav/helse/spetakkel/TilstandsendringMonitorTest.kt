@@ -143,7 +143,6 @@ class TilstandsendringMonitorTest {
     private fun vedtaksperiodeEndret(
         eventId: UUID = UUID.randomUUID(),
         vedtaksperiodeId: UUID = UUID.randomUUID(),
-        aktørId: String = "10000123467",
         fødselsnummer: String = "20046913371",
         orgnummer: String = "98765432",
         forrigeTilstand: String = "MOTTATT_SYKMELDING_FERDIG_GAP",
@@ -164,7 +163,6 @@ class TilstandsendringMonitorTest {
     "event_name": "ny_søknad"
   },
   "makstid": "${LocalDateTime.MAX}",
-  "aktørId": "$aktørId",
   "fødselsnummer": "$fødselsnummer"
 }
 """
@@ -175,7 +173,6 @@ class TilstandsendringMonitorTest {
   "@event_name": "person_avstemt",
   "@id": "${UUID.randomUUID()}",
   "@opprettet": "${LocalDateTime.now()}",
-  "aktørId": "11",
   "fødselsnummer": "22",
   "arbeidsgivere": [
     {

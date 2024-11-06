@@ -52,7 +52,7 @@ class TilstandsendringMonitor(
             validate {
                 it.demandValue("@event_name", "vedtaksperiode_endret")
                 it.requireKey(
-                    "@forårsaket_av", "@forårsaket_av.event_name", "aktørId", "fødselsnummer",
+                    "@forårsaket_av", "@forårsaket_av.event_name", "fødselsnummer",
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
                     "gjeldendeTilstand"
                 )
@@ -398,7 +398,6 @@ class TilstandsendringMonitor(
         }
 
         class Tilstandsendring(private val packet: JsonMessage) {
-            val aktørId: String get() = packet["aktørId"].asText()
             val fødselsnummer: String get() = packet["fødselsnummer"].asText()
             val organisasjonsnummer: String get() = packet["organisasjonsnummer"].asText()
             val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
