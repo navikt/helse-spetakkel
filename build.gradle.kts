@@ -70,8 +70,4 @@ tasks {
             events("skipped", "failed")
         }
     }
-
-    withType<Wrapper> {
-        gradleVersion = "8.5"
-    }
 }
