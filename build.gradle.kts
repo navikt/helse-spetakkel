@@ -3,7 +3,7 @@ val tbdLibsVersion = "2024.04.30-10.57-21d60764"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
-    kotlin("jvm") version "1.9.22"
+    kotlin("jvm") version "2.0.21"
 }
 
 dependencies {
