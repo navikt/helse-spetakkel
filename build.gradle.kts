@@ -1,4 +1,4 @@
-val junitJupiterVersion = "5.10.2"
+val junitJupiterVersion = "5.11.3"
 val tbdLibsVersion = "2024.04.30-10.57-21d60764"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
