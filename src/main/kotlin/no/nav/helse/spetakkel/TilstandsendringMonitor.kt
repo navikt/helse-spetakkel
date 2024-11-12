@@ -1,11 +1,20 @@
 package no.nav.helse.spetakkel
 
 import com.fasterxml.jackson.databind.JsonNode
-import io.prometheus.client.Counter
-import io.prometheus.client.Gauge
+import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
+import com.github.navikt.tbd_libs.rapids_and_rivers.River
+import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDateTime
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.MultiGauge
+import io.micrometer.core.instrument.Tag
+import io.micrometer.core.instrument.Tags
 import kotliquery.*
 import net.logstash.logback.argument.StructuredArguments.keyValue
-import no.nav.helse.rapids_rivers.*
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
@@ -24,27 +33,6 @@ class TilstandsendringMonitor(
     private companion object {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
         private val logg = LoggerFactory.getLogger(TilstandsendringMonitor::class.java)
-        private val tilstandCounter = Counter.build(
-            "vedtaksperiode_tilstander_totals",
-            "Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra"
-        )
-            .labelNames("forrigeTilstand", "tilstand", "hendelse", "harVedtaksperiodeWarnings", "harHendelseWarnings")
-            .register()
-        private val tilstandWarningsCounter = Counter.build(
-            "vedtaksperiode_warnings_totals",
-            "Fordeling av warnings per tilstand"
-        )
-            .labelNames("tilstand")
-            .register()
-        private val tilstanderGauge = Gauge.build(
-            "vedtaksperiode_gjeldende_tilstander",
-            "Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand"
-        )
-            .labelNames("tilstand")
-            .register()
-            .apply {
-                TilstandType.values().forEach { this.labels(it.name).set(0.0) }
-            }
     }
 
     init {
@@ -93,7 +81,7 @@ class TilstandsendringMonitor(
     }
 
     private class Avstemmingsresuiltat(private val rapidsConnection: RapidsConnection, private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
-        override fun onPacket(packet: JsonMessage, context: MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
             val antallEndringer = packet["arbeidsgivere"].sumOf { arbeidsgiver ->
                 arbeidsgiver.path("vedtaksperioder").filter { vedtaksperiode ->
                     vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(
@@ -118,11 +106,11 @@ class TilstandsendringMonitor(
     private class Tilstandsendringer(private val rapidsConnection: RapidsConnection, private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) :
         River.PacketListener {
 
-        override fun onError(problems: MessageProblems, context: MessageContext) {
+        override fun onError(problems: MessageProblems, context: MessageContext, metadata: MessageMetadata) {
             sikkerLogg.error("forstod ikke vedtaksperiode_endret:\n${problems.toExtendedReport()}")
         }
 
-        override fun onPacket(packet: JsonMessage, context: MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
             val tilstandsendring = VedtaksperiodeTilstandDao.Tilstandsendring(packet)
             sikkerLogg.info(
                 "{} endret fra {} til {}:\n{}",
@@ -131,7 +119,7 @@ class TilstandsendringMonitor(
                 tilstandsendring.gjeldendeTilstand,
                 packet.toJson()
             )
-            refreshCounters(tilstandsendring)
+            refreshCounters(meterRegistry, tilstandsendring)
 
             val historiskTilstandsendring =
                 vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(tilstandsendring) ?: return
@@ -169,36 +157,49 @@ class TilstandsendringMonitor(
 
         private var lastRefreshTime = LocalDateTime.MIN
 
-        private fun refreshCounters(tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
-            refreshTilstandGauge()
+        private fun refreshCounters(meterRegistry: MeterRegistry, tilstandsendring: VedtaksperiodeTilstandDao.Tilstandsendring) {
+            refreshTilstandGauge(meterRegistry)
 
-            tilstandCounter.labels(
-                tilstandsendring.forrigeTilstand,
-                tilstandsendring.gjeldendeTilstand,
-                tilstandsendring.påGrunnAv,
-                if (tilstandsendring.harVedtaksperiodeWarnings) "1" else "0",
-                if (tilstandsendring.harHendelseWarnings) "1" else "0"
-            ).inc()
+            Counter.builder("vedtaksperiode_tilstander_totals")
+                .description("Fordeling av tilstandene periodene er i, og hvilken tilstand de kom fra")
+                .tag("forrigeTilstand", tilstandsendring.forrigeTilstand)
+                .tag("tilstand", tilstandsendring.gjeldendeTilstand)
+                .tag("hendelse", tilstandsendring.påGrunnAv)
+                .tag("harVedtaksperiodeWarnings", if (tilstandsendring.harVedtaksperiodeWarnings) "1" else "0")
+                .tag("harHendelseWarnings", if (tilstandsendring.harHendelseWarnings) "1" else "0")
+                .register(meterRegistry)
+                .increment()
 
-            tilstandWarningsCounter
-                .labels(tilstandsendring.forrigeTilstand)
-                .inc(tilstandsendring.antallHendelseWarnings.toDouble())
+            Counter.builder("vedtaksperiode_warnings_totals")
+                .description("Fordeling av warnings per tilstand")
+                .tag("tilstand", tilstandsendring.forrigeTilstand)
+                .register(meterRegistry)
+                .increment()
         }
 
-        private fun refreshTilstandGauge() {
+        private fun refreshTilstandGauge(meterRegistry: MeterRegistry) {
             val now = LocalDateTime.now()
             if (lastRefreshTime > now.minusMinutes(15)) return
             logg.info("Refreshing tilstand gauge")
-            TilstandType.values().forEach { tilstanderGauge.labels(it.name).set(0.0) }
-            vedtaksperiodeTilstandDao.hentGjeldendeTilstander().forEach { (tilstand, count) ->
-                tilstanderGauge.labels(tilstand).set(count.toDouble())
-            }
+            val defaultMap = TilstandType.entries.associateWith { 0L }
+            val valuesFromDb = vedtaksperiodeTilstandDao.hentGjeldendeTilstander()
+                .mapKeys { (navn, _) -> TilstandType.valueOf(navn) }
+            refreshTilstandGauge(meterRegistry, defaultMap + valuesFromDb)
             lastRefreshTime = now
+        }
+
+        private fun refreshTilstandGauge(meterRegistry: MeterRegistry, tilstander: Map<TilstandType, Long>) {
+            MultiGauge.builder("vedtaksperiode_gjeldende_tilstander")
+                .description("Gjeldende tilstander for vedtaksperioder som ikke har nådd en slutt-tilstand")
+                .register(meterRegistry)
+                .register(tilstander.map { (tilstand, antall) ->
+                    MultiGauge.Row.of(Tags.of(Tag.of("tilstand", tilstand.name)), antall)
+                })
         }
     }
 
     private class PlanlagtePåminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
-        override fun onPacket(packet: JsonMessage, context: MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
             val timeout = if (packet["er_avsluttet"].asBoolean()) 0 else ChronoUnit.SECONDS.between(
                 packet["endringstidspunkt"].asLocalDateTime(),
                 packet["påminnelsetidspunkt"].asLocalDateTime()
@@ -212,7 +213,7 @@ class TilstandsendringMonitor(
     }
 
     private class Påminnelser(private val vedtaksperiodeTilstandDao: VedtaksperiodeTilstandDao) : River.PacketListener {
-        override fun onPacket(packet: JsonMessage, context: MessageContext) {
+        override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
             vedtaksperiodeTilstandDao.oppdaterAntallPåminnelser(
                 vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
                 tilstand = packet["tilstand"].asText(),

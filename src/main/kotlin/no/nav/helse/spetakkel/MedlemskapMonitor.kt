@@ -1,25 +1,19 @@
 package no.nav.helse.spetakkel
 
 import com.fasterxml.jackson.databind.JsonNode
-import io.prometheus.client.Counter
-import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageContext
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
+import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
+import com.github.navikt.tbd_libs.rapids_and_rivers.River
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 
 internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
 
     private companion object {
         private val log = LoggerFactory.getLogger(MedlemskapMonitor::class.java)
-
-        private val medlemskapvurderingCounter = Counter.build("medlemskapvurdering_totals", "Antall medlemskapvurderinger")
-            .labelNames("resultat")
-            .register()
-
-        private val medlemskapresultatCounter = Counter.build("medlemskapresultat_totals", "Antall medlemskapvurderinger")
-            .labelNames("identifikator", "svar")
-            .register()
     }
 
     init {
@@ -34,19 +28,30 @@ internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.Pac
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
         packet["@løsning.Medlemskap.resultat.svar"].asText()
-            .also { medlemskapvurderingCounter.labels(it).inc() }
+            .also {
+                Counter.builder("medlemskapvurdering_totals")
+                    .description("Antall medlemskapvurderinger")
+                    .tag("resultat", it)
+                    .register(meterRegistry)
+                    .increment()
+            }
 
-        sjekkDelresultat(packet["@løsning.Medlemskap.resultat"])
+        sjekkDelresultat(meterRegistry, packet["@løsning.Medlemskap.resultat"])
     }
 
-    private fun sjekkDelresultat(node: JsonNode) {
+    private fun sjekkDelresultat(meterRegistry: MeterRegistry, node: JsonNode) {
         if (node.path("delresultat").let { it.isArray && !it.isEmpty }) {
-            node.path("delresultat").map { sjekkDelresultat(it) }
+            node.path("delresultat").map { sjekkDelresultat(meterRegistry, it) }
             return
         }
 
-        medlemskapresultatCounter.labels(node.path("identifikator").asText(), node.path("svar").asText()).inc()
+        Counter.builder("medlemskapresultat_totals")
+            .description("Antall medlemskapvurderinger")
+            .tag("identifikator", node.path("identifikator").asText())
+            .tag("svar", node.path("svar").asText())
+            .register(meterRegistry)
+            .increment()
     }
 }

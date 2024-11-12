@@ -1,21 +1,21 @@
 package no.nav.helse.spetakkel
 
 import com.fasterxml.jackson.databind.JsonNode
-import io.prometheus.client.Counter
-import no.nav.helse.rapids_rivers.*
+import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
+import com.github.navikt.tbd_libs.rapids_and_rivers.River
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import no.nav.helse.spetakkel.AktivitetsloggMonitor.Nivå.FUNKSJONELL_FEIL
 import no.nav.helse.spetakkel.AktivitetsloggMonitor.Nivå.VARSEL
 import org.slf4j.LoggerFactory
-import java.util.*
 
 internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
 
     private companion object {
         private val log = LoggerFactory.getLogger(AktivitetsloggMonitor::class.java)
-
-        private val aktivitetCounter = Counter.build("aktivitet_totals", "Antall aktiviteter")
-            .labelNames("alvorlighetsgrad", "melding")
-            .register()
     }
 
     init {
@@ -29,7 +29,7 @@ internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
         packet["aktiviteter"]
             .takeIf(JsonNode::isArray)
             ?.filter {
@@ -40,7 +40,12 @@ internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River
             }
             ?.filter { (nivå, _) -> nivå in listOf(VARSEL, FUNKSJONELL_FEIL) }
             ?.onEach { (nivå, aktivitet) ->
-                aktivitetCounter.labels(nivå.name, aktivitet["melding"].asText()).inc()
+                Counter.builder("aktivitet_totals")
+                    .description("Antall aktiviteter")
+                    .tag("alvorlighetsgrad", nivå.name)
+                    .tag("melding", aktivitet.path("melding").asText())
+                    .register(meterRegistry)
+                    .increment()
             }
     }
 

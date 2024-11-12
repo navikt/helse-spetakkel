@@ -1,5 +1,6 @@
 val junitJupiterVersion = "5.11.3"
-val tbdLibsVersion = "2024.04.30-10.57-21d60764"
+val tbdLibsVersion = "2024.11.12-11.09-16cf2599"
+val rapidsAndRiversVersion = "2024111211071731406062.648687519469"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 
 plugins {
@@ -7,7 +8,7 @@ plugins {
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:2024020507581707116327.1c34df474331")
+    implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
 
     implementation("org.flywaydb:flyway-core:9.10.2")
     implementation("com.zaxxer:HikariCP:5.0.1")
@@ -16,10 +17,11 @@ dependencies {
 
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
 
+    testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
+    testImplementation("com.github.navikt.tbd-libs:postgres-testdatabaser:$tbdLibsVersion")
+
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
-    testImplementation("com.github.navikt.tbd-libs:postgres-testdatabaser:$tbdLibsVersion")
 }
 
 repositories {

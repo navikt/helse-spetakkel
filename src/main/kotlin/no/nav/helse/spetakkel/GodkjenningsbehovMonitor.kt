@@ -1,9 +1,15 @@
 package no.nav.helse.spetakkel
 
-import io.prometheus.client.Counter
+import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
+import com.github.navikt.tbd_libs.rapids_and_rivers.River
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import kotliquery.queryOf
 import kotliquery.sessionOf
-import no.nav.helse.rapids_rivers.*
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -12,29 +18,6 @@ import javax.sql.DataSource
 internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, dataSource: DataSource) {
     private companion object {
         private val sikkerLogg = LoggerFactory.getLogger("tjenestekall")
-        private val godkjenningsbehovløsningCounter =
-            Counter.build("godkjenningsbehovlosning_totals", "Antall løste godkjenningsbehov")
-                .labelNames(
-                    "periodetype",
-                    "utbetalingtype",
-                    "inntektskilde",
-                    "harWarnings",
-                    "godkjent",
-                    "automatiskBehandling",
-                    "forarsaketAvEventName"
-                )
-                .register()
-        private val godkjenningsbehovCounter =
-            Counter.build("godkjenningsbehov_totals", "Antall godkjenningsbehov")
-                .labelNames(
-                    "periodetype",
-                    "utbetalingtype",
-                    "inntektskilde",
-                    "harWarnings",
-                    "forarsaketAvEventName",
-                    "resendingAvGodkjenningsbehov"
-                )
-                .register()
     }
 
     init {
@@ -68,39 +51,43 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, data
     }
 
     private class Godkjenningsbehovløsninger : River.PacketListener {
-        override fun onError(problems: MessageProblems, context: MessageContext) {
+        override fun onError(problems: MessageProblems, context: MessageContext, metadata: MessageMetadata) {
             sikkerLogg.error("forstod ikke Godkjenningbehovløsning:\n${problems.toExtendedReport()}")
         }
 
-        override fun onPacket(packet: JsonMessage, context: MessageContext) {
-            godkjenningsbehovløsningCounter.labels(
-                packet["Godkjenning.periodetype"].asText(),
-                packet["Godkjenning.utbetalingtype"].asText(),
-                packet["Godkjenning.inntektskilde"].asText(),
-                if (packet["Godkjenning.warnings"].path("aktiviteter")
+        override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+            Counter.builder("godkjenningsbehovlosning_totals")
+                .description("Antall løste godkjenningsbehov")
+                .tag("periodetype", packet["Godkjenning.periodetype"].asText())
+                .tag("utbetalingtype", packet["Godkjenning.utbetalingtype"].asText())
+                .tag("inntektskilde", packet["Godkjenning.inntektskilde"].asText())
+                .tag("harWarnings", if (packet["Godkjenning.warnings"].path("aktiviteter")
                         .any { it.path("alvorlighetsgrad").asText() == "WARN" }
-                ) "1" else "0",
-                if (packet["@løsning.Godkjenning.godkjent"].asBoolean()) "1" else "0",
-                if (packet["@løsning.Godkjenning.automatiskBehandling"].asBoolean()) "1" else "0",
-                packet["@forårsaket_av.event_name"].asText()
-            ).inc()
+                ) "1" else "0")
+                .tag("godkjent", if (packet["@løsning.Godkjenning.godkjent"].asBoolean()) "1" else "0")
+                .tag("automatiskBehandling", if (packet["@løsning.Godkjenning.automatiskBehandling"].asBoolean()) "1" else "0")
+                .tag("forarsaketAvEventName", packet["@forårsaket_av.event_name"].asText())
+                .register(meterRegistry)
+                .increment()
         }
     }
 
     private class Godkjenningsbehov(private val dataSource: DataSource) : River.PacketListener {
-        override fun onError(problems: MessageProblems, context: MessageContext) {
+        override fun onError(problems: MessageProblems, context: MessageContext, metadata: MessageMetadata) {
             sikkerLogg.error("forstod ikke Godkjenningbehov:\n${problems.toExtendedReport()}")
         }
 
-        override fun onPacket(packet: JsonMessage, context: MessageContext) {
-            godkjenningsbehovCounter.labels(
-                packet["Godkjenning.periodetype"].asText(),
-                packet["Godkjenning.utbetalingtype"].asText(),
-                packet["Godkjenning.inntektskilde"].asText(),
-                "0",
-                packet["@forårsaket_av.event_name"].asText(),
-                if (erOpprinneligGodkjenningsbehov(packet)) "0" else "1",
-            ).inc()
+        override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+            Counter.builder("godkjenningsbehov_totals")
+                .description("Antall godkjenningsbehov")
+                .tag("periodetype", packet["Godkjenning.periodetype"].asText())
+                .tag("utbetalingtype", packet["Godkjenning.utbetalingtype"].asText())
+                .tag("inntektskilde", packet["Godkjenning.inntektskilde"].asText())
+                .tag("harWarnings", "0")
+                .tag("forarsaketAvEventName", packet["@forårsaket_av.event_name"].asText())
+                .tag("resendingAvGodkjenningsbehov", if (erOpprinneligGodkjenningsbehov(packet)) "0" else "1")
+                .register(meterRegistry)
+                .increment()
         }
 
 

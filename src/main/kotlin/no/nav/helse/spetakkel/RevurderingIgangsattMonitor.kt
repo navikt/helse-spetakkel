@@ -1,18 +1,14 @@
 package no.nav.helse.spetakkel
 
-import io.prometheus.client.Counter
-import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageContext
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
+import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
+import com.github.navikt.tbd_libs.rapids_and_rivers.River
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
+import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 
 internal class RevurderingIgangsattMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
-
-    private companion object {
-        private val revurderingerIgangsatt = Counter.build("revurdering_igangsatt", "Antall revurderinger igangsatt")
-            .labelNames("hvorfor")
-            .register()
-    }
 
     init {
         River(rapidsConnection).apply {
@@ -24,7 +20,11 @@ internal class RevurderingIgangsattMonitor(rapidsConnection: RapidsConnection) :
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext) {
-        revurderingerIgangsatt.labels(packet["årsak"].asText()).inc()
+    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+        Counter.builder("revurdering_igangsatt")
+            .description("Antall revurderinger igangsatt")
+            .tag("hvorfor", packet["årsak"].asText())
+            .register(meterRegistry)
+            .increment()
     }
 }
