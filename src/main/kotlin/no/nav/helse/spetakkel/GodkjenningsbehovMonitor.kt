@@ -22,10 +22,12 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, data
 
     init {
         River(rapidsConnection).apply {
+            precondition {
+                it.requireAll("@behov", listOf("Godkjenning"))
+                it.requireKey("@løsning")
+                it.requireValue("@final", true)
+            }
             validate {
-                it.demandAll("@behov", listOf("Godkjenning"))
-                it.demandKey("@løsning")
-                it.demandValue("@final", true)
                 it.requireAny("Godkjenning.utbetalingtype", listOf("UTBETALING", "REVURDERING"))
                 it.interestedIn("Godkjenning.warnings", "Godkjenning.periodetype", "Godkjenning.inntektskilde")
                 it.requireKey(
@@ -36,9 +38,11 @@ internal class GodkjenningsbehovMonitor(rapidsConnection: RapidsConnection, data
             }
         }.register(Godkjenningsbehovløsninger())
         River(rapidsConnection).apply {
+            precondition {
+                it.requireAll("@behov", listOf("Godkjenning"))
+                it.forbid("@løsning")
+            }
             validate {
-                it.demandAll("@behov", listOf("Godkjenning"))
-                it.rejectKey("@løsning")
                 it.requireAny("Godkjenning.utbetalingtype", listOf("UTBETALING", "REVURDERING"))
                 it.requireKey(
                     "Godkjenning.periodetype",

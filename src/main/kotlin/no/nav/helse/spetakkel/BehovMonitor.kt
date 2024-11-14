@@ -19,12 +19,11 @@ internal class BehovMonitor(rapidsConnection: RapidsConnection) : River.PacketLi
 
     init {
         River(rapidsConnection).apply {
-            validate {
-                it.demandValue("@event_name", "behov")
-                it.rejectKey("@løsning")
-                it.requireKey("@behov")
-                it.interestedIn("vedtaksperiodeId")
+            precondition {
+                it.requireValue("@event_name", "behov")
+                it.forbid("@løsning")
             }
+            validate { it.requireKey("@behov"); it.interestedIn("vedtaksperiodeId") }
         }.register(this)
     }
 

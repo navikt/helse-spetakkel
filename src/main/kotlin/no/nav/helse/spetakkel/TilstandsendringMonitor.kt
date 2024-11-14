@@ -37,8 +37,8 @@ class TilstandsendringMonitor(
 
     init {
         River(rapidsConnection).apply {
+            precondition { it.requireValue("@event_name", "vedtaksperiode_endret") }
             validate {
-                it.demandValue("@event_name", "vedtaksperiode_endret")
                 it.requireKey(
                     "@forårsaket_av", "@forårsaket_av.event_name", "fødselsnummer",
                     "organisasjonsnummer", "vedtaksperiodeId", "forrigeTilstand",
@@ -50,8 +50,8 @@ class TilstandsendringMonitor(
             }
         }.register(Tilstandsendringer(rapidsConnection, vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
+            precondition { it.requireValue("@event_name", "person_avstemt") }
             validate {
-                it.demandValue("@event_name", "person_avstemt")
                 it.requireKey("fødselsnummer")
                 it.requireArray("arbeidsgivere") {
                     requireArray("vedtaksperioder") {
@@ -66,15 +66,15 @@ class TilstandsendringMonitor(
             }
         }.register(Avstemmingsresuiltat(rapidsConnection, vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
+            precondition { it.requireValue("@event_name", "planlagt_påminnelse") }
             validate {
-                it.demandValue("@event_name", "planlagt_påminnelse")
                 it.requireKey("vedtaksperiodeId", "tilstand", "endringstidspunkt", "påminnelsetidspunkt", "er_avsluttet")
                 it.require("endringstidspunkt", JsonNode::asLocalDateTime)
             }
         }.register(PlanlagtePåminnelser(vedtaksperiodeTilstandDao))
         River(rapidsConnection).apply {
+            precondition { it.requireValue("@event_name", "påminnelse") }
             validate {
-                it.demandValue("@event_name", "påminnelse")
                 it.requireKey("vedtaksperiodeId", "tilstand", "antallGangerPåminnet")
             }
         }.register(Påminnelser(vedtaksperiodeTilstandDao))

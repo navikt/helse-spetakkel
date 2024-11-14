@@ -22,8 +22,8 @@ internal class BehovUtenLøsningMonitor(
 
     init {
         River(rapidsConnection).apply {
+            precondition { it.requireValue("@event_name", "behov_uten_fullstendig_løsning") }
             validate {
-                it.demandValue("@event_name", "behov_uten_fullstendig_løsning")
                 it.requireKey("@id", "behov_id", "ufullstendig_behov")
                 it.requireArray("forventet")
                 it.requireArray("løsninger")

@@ -18,10 +18,12 @@ internal class MedlemskapMonitor(rapidsConnection: RapidsConnection) : River.Pac
 
     init {
         River(rapidsConnection).apply {
+            precondition {
+                it.requireValue("@event_name", "behov")
+                it.requireAll("@behov", listOf("Medlemskap"))
+                it.requireKey("@løsning.Medlemskap.resultat")
+            }
             validate {
-                it.demandValue("@event_name", "behov")
-                it.demandAll("@behov", listOf("Medlemskap"))
-                it.demandKey("@løsning.Medlemskap.resultat")
                 it.requireKey("@løsning.Medlemskap.resultat.svar",
                     "@løsning.Medlemskap.resultat.delresultat")
             }
