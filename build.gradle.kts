@@ -2,6 +2,7 @@ val junitJupiterVersion = "5.11.3"
 val tbdLibsVersion = "2024.11.15-09.09-08ca346b"
 val rapidsAndRiversVersion = "2024111509181731658731.11009b44c672"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
+val hikariCPVersion = "6.1.0"
 
 plugins {
     kotlin("jvm") version "2.0.21"
@@ -11,7 +12,7 @@ dependencies {
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
 
     implementation("org.flywaydb:flyway-core:9.10.2")
-    implementation("com.zaxxer:HikariCP:5.0.1")
+    implementation("com.zaxxer:HikariCP:$hikariCPVersion")
     implementation("org.postgresql:postgresql:42.7.2")
     implementation("com.github.seratch:kotliquery:1.9.0")
 
