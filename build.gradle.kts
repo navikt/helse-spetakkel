@@ -1,5 +1,5 @@
 val junitJupiterVersion = "5.11.3"
-val tbdLibsVersion = "2024.11.15-09.09-08ca346b"
+val tbdLibsVersion = "2024.11.24-12.01-42fdc22d"
 val rapidsAndRiversVersion = "2024112412131732446804.1b3dcc636bed"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 val hikariCPVersion = "6.1.0"
