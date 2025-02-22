@@ -35,7 +35,7 @@ spec:
     enabled: true
   gcp:
     sqlInstances:
-      - type: POSTGRES_16
+      - type: POSTGRES_17
         tier: db-f1-micro
         diskAutoresize: true
         pointInTimeRecovery: true
