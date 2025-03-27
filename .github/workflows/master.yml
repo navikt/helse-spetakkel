@@ -31,14 +31,12 @@ jobs:
     - name: deploy to dev
       uses: nais/deploy/actions/deploy@v2
       env:
-        APIKEY: ${{ secrets.NAIS_DEPLOY_APIKEY }}
         CLUSTER: dev-gcp
         RESOURCE: deploy/dev.yml
         IMAGE: ${{ steps.docker-build-push.outputs.image }}
     - name: deploy to prod
       uses: nais/deploy/actions/deploy@v2
       env:
-        APIKEY: ${{ secrets.NAIS_DEPLOY_APIKEY }}
         CLUSTER: prod-gcp
         RESOURCE: deploy/prod.yml
         IMAGE: ${{ steps.docker-build-push.outputs.image }}
