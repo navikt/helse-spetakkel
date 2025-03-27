@@ -26,8 +26,6 @@ jobs:
       id: docker-build-push
       with:
         team: tbd
-        project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
-        identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
     - name: deploy to dev
       uses: nais/deploy/actions/deploy@v2
       env:
