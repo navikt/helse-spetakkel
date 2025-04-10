@@ -19,6 +19,8 @@ class EventMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
         Counter.builder("hendelser_totals")
             .description("Antall hendelser")
             .tags("hendelse", packet["@event_name"].asText())
+            .tag("topic", metadata.topic)
+            .tag("partition", metadata.partition.toString())
             .register(meterRegistry)
             .increment()
     }
