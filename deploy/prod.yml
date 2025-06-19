@@ -36,6 +36,11 @@ spec:
     pool: nav-prod
   secureLogs:
     enabled: true
+  accessPolicy:
+    outbound:
+      rules:
+        - application: logging
+          namespace: nais-system
   gcp:
     sqlInstances:
       - type: POSTGRES_17
