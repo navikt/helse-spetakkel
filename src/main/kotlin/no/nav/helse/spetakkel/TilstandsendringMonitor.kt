@@ -422,6 +422,8 @@ class TilstandsendringMonitor(
         AVVENTER_GODKJENNING,
         AVVENTER_SIMULERING,
         TIL_UTBETALING,
+        AVVENTER_ANNULLERING,
+        TIL_ANNULLERING,
         TIL_INFOTRYGD,
         AVSLUTTET,
         AVSLUTTET_UTEN_UTBETALING,
