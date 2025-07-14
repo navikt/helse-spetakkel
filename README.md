@@ -1,5 +1,4 @@
-Spetakkel [![Actions Status](https://github.com/navikt/helse-spetakkel/workflows/master/badge.svg)](https://github.com/navikt/helse-spetakkel/actions)
-=============
+# Spetakkel [![Actions Status](https://github.com/navikt/helse-spetakkel/workflows/master/badge.svg)](https://github.com/navikt/helse-spetakkel/actions)
 
 Produserer diverse metrikker fra hendelser i sykepenge-domenet
 
@@ -11,4 +10,4 @@ Spørsmål knyttet til koden eller prosjektet kan stilles som issues her på Git
 
 ## For NAV-ansatte
 
-Interne henvendelser kan sendes via Slack i kanalen #område-helse.
+Interne henvendelser kan sendes via Slack i kanalen [#helseytelser](https://nav-it.slack.com/archives/CD1KVMPJ6).
