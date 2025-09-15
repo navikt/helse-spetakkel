@@ -1,4 +1,4 @@
-# Spetakkel [![Actions Status](https://github.com/navikt/helse-spetakkel/workflows/master/badge.svg)](https://github.com/navikt/helse-spetakkel/actions)
+# Spetakkel [![Actions Status](https://github.com/navikt/helse-spetakkel/workflows/main/badge.svg)](https://github.com/navikt/helse-spetakkel/actions)
 
 Produserer diverse metrikker fra hendelser i sykepenge-domenet
 
