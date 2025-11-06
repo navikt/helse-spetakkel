@@ -14,7 +14,6 @@ internal class RevurderingIgangsattMonitor(rapidsConnection: RapidsConnection) :
         River(rapidsConnection).apply {
             precondition {
                 it.requireValue("@event_name", "overstyring_igangsatt")
-                it.requireValue("typeEndring", "REVURDERING")
             }
             validate {
                 it.requireKey("årsak")
