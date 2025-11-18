@@ -418,12 +418,6 @@ class TilstandsendringMonitor(
     }
 
     private enum class TilstandType {
-        // disse finnes ikke i spleis lenger, men finnes i spetakkel sin database
-        REVURDERING_FEILET,
-        UTBETALING_FEILET,
-        AVVENTER_GJENNOMFØRT_REVURDERING,
-        // </slutt gamle tilstander>
-
         START,
 
         AVVENTER_INFOTRYGDHISTORIKK,

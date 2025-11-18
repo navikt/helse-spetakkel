@@ -1,0 +1,3 @@
+UPDATE vedtaksperiode_tilstand
+    SET tilstand='TIL_INFOTRYGD'
+WHERE tilstand = 'REVURDERING_FEILET' OR tilstand='UTBETALING_FEILET' OR tilstand='AVVENTER_GJENNOMFØRT_REVURDERING';
