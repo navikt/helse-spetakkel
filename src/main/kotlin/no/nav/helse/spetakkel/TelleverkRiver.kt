@@ -6,6 +6,9 @@ import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import io.micrometer.core.instrument.MeterRegistry
 import javax.sql.DataSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotliquery.queryOf
 import kotliquery.sessionOf
 import kotliquery.using
@@ -29,7 +32,10 @@ internal class TelleverkRiver(
 
 internal class OppfriskTilstandstellingDao(val dataSource: DataSource) {
     fun friskOppTilstandstelling() {
-        using(sessionOf(dataSource)) { session ->
-            session.run(queryOf("REFRESH MATERIALIZED VIEW tilstandstelling").asExecute)}
+        GlobalScope.launch(Dispatchers.IO) {
+            using(sessionOf(dataSource)) { session ->
+                session.run(queryOf("REFRESH MATERIALIZED VIEW tilstandstelling").asExecute)}
+        }
+
     }
 }
