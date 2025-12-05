@@ -16,12 +16,14 @@ import java.util.*
 class TilstandsendringMonitorTest {
     private lateinit var rapid: TestRapid
     private lateinit var dataSource: TestDataSource
+    private lateinit var monitorDao: TilstandsendringMonitor.VedtaksperiodeTilstandDao
 
     @BeforeEach
     fun setup() {
         rapid = TestRapid()
         dataSource = databaseContainer.nyTilkobling()
-        TilstandsendringMonitor(rapid, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource.ds))
+        monitorDao = TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource.ds)
+        TilstandsendringMonitor(rapid, monitorDao)
     }
 
     @AfterEach
@@ -35,6 +37,22 @@ class TilstandsendringMonitorTest {
         assertEquals(2, sessionOf(dataSource.ds).use {
             it.run(queryOf("SELECT COUNT(1) FROM vedtaksperiode_tilstand").map { it.long(1) }.asSingle)
         })
+    }
+
+    @Test
+    fun `virker det å telle med materialiserte views, mon tro`() {
+        repeat(9) {
+            rapid.sendTestMessage(
+                vedtaksperiodeEndret(
+                    vedtaksperiodeId = UUID.randomUUID(),
+                    forrigeTilstand = "AVVENTER_GODKJENNING",
+                    gjeldendeTilstand = "AVSLUTTET"
+                )
+            )
+        }
+        monitorDao.friskOppTilstandstelling()
+        val tilstander = monitorDao.hentGjeldendeTilstander()
+        assertEquals(9, tilstander["AVSLUTTET"])
     }
 
     @Test

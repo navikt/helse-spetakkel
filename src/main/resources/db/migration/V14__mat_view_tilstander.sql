@@ -1,0 +1,1 @@
+CREATE MATERIALIZED VIEW tilstandstelling as SELECT tilstand, COUNT(1) as antall FROM vedtaksperiode_tilstand GROUP BY tilstand;

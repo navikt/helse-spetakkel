@@ -323,10 +323,23 @@ class TilstandsendringMonitor(
 
         fun hentGjeldendeTilstander(): Map<String, Long> {
             return using(sessionOf(dataSource)) { session ->
-                session.run(queryOf("SELECT tilstand, COUNT(1) FROM vedtaksperiode_tilstand GROUP BY tilstand").map {
+                session.run(queryOf("SELECT tilstand, antall FROM tilstandstelling").map {
                     it.string(1) to it.long(2)
                 }.asList)
             }.associate { it }
+        }
+
+        fun friskOppTilstandstelling() {
+            using(sessionOf(dataSource)) { session ->
+                session.run(queryOf("REFRESH MATERIALIZED VIEW tilstandstelling").asExecute)}
+        }
+
+        fun dumpit(): List<String> {
+            return using(sessionOf(dataSource)) { session ->
+                session.run(queryOf("SELECT * FROM tilstandstelling").map {
+                    "row: ${it.string(1)} - ${it.long(2)}"
+                }.asList)
+            }.toList()
         }
 
         private fun hentGjeldendeTilstand(session: TransactionalSession, vedtaksperiodeId: String): HistoriskTilstandsendring? {
