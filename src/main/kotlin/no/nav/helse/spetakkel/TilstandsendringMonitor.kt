@@ -329,14 +329,6 @@ class TilstandsendringMonitor(
             }.associate { it }
         }
 
-        fun dumpit(): List<String> {
-            return using(sessionOf(dataSource)) { session ->
-                session.run(queryOf("SELECT * FROM tilstandstelling").map {
-                    "row: ${it.string(1)} - ${it.long(2)}"
-                }.asList)
-            }.toList()
-        }
-
         private fun hentGjeldendeTilstand(session: TransactionalSession, vedtaksperiodeId: String): HistoriskTilstandsendring? {
             return session.run(
                 queryOf(
