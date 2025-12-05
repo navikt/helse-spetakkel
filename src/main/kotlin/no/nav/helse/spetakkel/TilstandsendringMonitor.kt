@@ -329,11 +329,6 @@ class TilstandsendringMonitor(
             }.associate { it }
         }
 
-        fun friskOppTilstandstelling() {
-            using(sessionOf(dataSource)) { session ->
-                session.run(queryOf("REFRESH MATERIALIZED VIEW tilstandstelling").asExecute)}
-        }
-
         fun dumpit(): List<String> {
             return using(sessionOf(dataSource)) { session ->
                 session.run(queryOf("SELECT * FROM tilstandstelling").map {

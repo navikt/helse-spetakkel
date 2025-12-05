@@ -24,6 +24,7 @@ class TilstandsendringMonitorTest {
         dataSource = databaseContainer.nyTilkobling()
         monitorDao = TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource.ds)
         TilstandsendringMonitor(rapid, monitorDao)
+        TelleverkRiver(rapid, OppfriskTilstandstellingDao(dataSource.ds))
     }
 
     @AfterEach
@@ -50,7 +51,7 @@ class TilstandsendringMonitorTest {
                 )
             )
         }
-        monitorDao.friskOppTilstandstelling()
+        rapid.sendTestMessage("""{"@event_name": "kvarter"}""")
         val tilstander = monitorDao.hentGjeldendeTilstander()
         assertEquals(9, tilstander["AVSLUTTET"])
     }
