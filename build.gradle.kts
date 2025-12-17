@@ -3,7 +3,7 @@ val tbdLibsVersion = "2025.11.04-10.12-3a167132"
 val rapidsAndRiversVersion = "2025110410191762247980.5e0592e08597"
 val mainClass = "no.nav.helse.spetakkel.AppKt"
 val hikariCPVersion = "6.3.0"
-val flywayVersion = "11.5.0"
+val flywayVersion = "11.19.0"
 val postgresqlVersion = "42.7.7"
 
 plugins {
