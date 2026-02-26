@@ -7,7 +7,7 @@ val flywayVersion = "11.5.0"
 val postgresqlVersion = "42.7.7"
 
 plugins {
-    kotlin("jvm") version "2.2.21"
+    kotlin("jvm") version "2.3.0"
 }
 
 dependencies {
