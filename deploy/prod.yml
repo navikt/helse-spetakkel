@@ -48,6 +48,15 @@ spec:
         databases:
           - name: spetakkel
             envVarPrefix: DATABASE
+        flags:
+          - name: cloudsql.enable_pgaudit
+            value: "on"
+          - name: pgaudit.log
+            value: "write,ddl,role"
+          - name: pgaudit.log_parameter
+            value: "on"
+          - name: pgaudit.log_relation
+            value: "on"
   env:
     - name: KAFKA_CONSUMER_GROUP_ID
       value: tbd-spetakkel-v1
