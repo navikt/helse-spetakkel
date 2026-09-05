@@ -16,7 +16,7 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql:$flywayVersion")
     implementation("com.zaxxer:HikariCP:$hikariCPVersion")
     implementation("org.postgresql:postgresql:$postgresqlVersion")
-    implementation("com.github.seratch:kotliquery:1.9.0")
+    implementation("com.github.seratch:kotliquery:1.9.1")
 
     implementation("com.bazaarvoice.jackson:rison:2.9.10.2")
 
