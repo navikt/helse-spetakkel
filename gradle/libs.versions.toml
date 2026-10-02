@@ -1,0 +1,19 @@
+[versions]
+flyway = "11.5.0"
+tbdLibs = "2026.01.22-09.16-1d3f6039"
+sykepengerGradlePlugins = "20261001.1830"
+
+[libraries]
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+hikariCP = "com.zaxxer:HikariCP:6.3.0"
+kotliquery = "com.github.seratch:kotliquery:1.9.0"
+postgresql = "org.postgresql:postgresql:42.7.7"
+rison = "com.bazaarvoice.jackson:rison:2.9.10.2"
+
+rapidsAndRivers = "com.github.navikt:rapids-and-rivers:2026011411051768385145.e8ebad1177b4"
+
+tbdLibs-postgresTestdatabaser = { module = "com.github.navikt.tbd-libs:postgres-testdatabaser", version.ref = "tbdLibs" }
+tbdLibs-rapidsAndRiversTest = { module = "com.github.navikt.tbd-libs:rapids-and-rivers-test", version.ref = "tbdLibs" }
+
+[plugins]
+sykepenger-deployable = { id = "no.nav.sykepenger.deployable", version.ref = "sykepengerGradlePlugins" }

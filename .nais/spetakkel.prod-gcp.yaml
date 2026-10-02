@@ -1,0 +1,25 @@
+spec:
+  preStopHook:
+    http:
+      path: /stop
+  kafka:
+    pool: nav-prod
+  gcp:
+    sqlInstances:
+      - type: POSTGRES_17
+        diskAutoresize: true
+        pointInTimeRecovery: true
+        tier: db-custom-1-3840
+        name: spetakkel
+        databases:
+          - name: spetakkel
+            envVarPrefix: DATABASE
+        flags:
+          - name: cloudsql.enable_pgaudit
+            value: "on"
+          - name: pgaudit.log
+            value: "write,ddl,role"
+          - name: pgaudit.log_parameter
+            value: "on"
+          - name: pgaudit.log_relation
+            value: "on"

@@ -1,0 +1,15 @@
+spec:
+  replicas:
+    cpuThresholdPercentage: 90
+  kafka:
+    pool: nav-dev
+  gcp:
+    sqlInstances:
+      - type: POSTGRES_17
+        tier: db-f1-micro
+        diskAutoresize: true
+        pointInTimeRecovery: true
+        name: spetakkel
+        databases:
+          - name: spetakkel
+            envVarPrefix: DATABASE
