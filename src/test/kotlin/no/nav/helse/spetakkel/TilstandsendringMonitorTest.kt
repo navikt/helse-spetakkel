@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import java.util.*
-import kotlinx.coroutines.delay
 
 class TilstandsendringMonitorTest {
     private lateinit var rapid: TestRapid
@@ -36,9 +35,12 @@ class TilstandsendringMonitorTest {
     @Test
     fun `avstemming`() {
         rapid.sendTestMessage(avstemmingmelding())
-        assertEquals(2, sessionOf(dataSource.ds).use {
-            it.run(queryOf("SELECT COUNT(1) FROM vedtaksperiode_tilstand").map { it.long(1) }.asSingle)
-        })
+        assertEquals(
+            2,
+            sessionOf(dataSource.ds).use {
+                it.run(queryOf("SELECT COUNT(1) FROM vedtaksperiode_tilstand").map { it.long(1) }.asSingle)
+            },
+        )
     }
 
     @Test
@@ -49,15 +51,15 @@ class TilstandsendringMonitorTest {
                 vedtaksperiodeEndret(
                     vedtaksperiodeId = vedtaksperiodeId,
                     forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
-                )
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
+                ),
             )
             rapid.sendTestMessage(
                 vedtaksperiodeEndret(
                     vedtaksperiodeId = vedtaksperiodeId,
                     forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
-                )
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
+                ),
             )
         }
 
@@ -72,46 +74,50 @@ class TilstandsendringMonitorTest {
                 vedtaksperiodeEndret(
                     vedtaksperiodeId = vedtaksperiodeId,
                     forrigeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
-                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP"
-                )
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
+                ),
             )
             rapid.sendTestMessage(
                 vedtaksperiodeEndret(
                     vedtaksperiodeId = vedtaksperiodeId,
                     forrigeTilstand = "AVVENTER_INNTEKTSMELDING_UFERDIG_GAP",
-                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP"
-                )
+                    gjeldendeTilstand = "AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP",
+                ),
             )
         }
 
-        assertEquals(2, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size);
+        assertEquals(2, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size)
         val loopMelding = meldinger().first { it["@event_name"].asText() == "vedtaksperiode_i_loop" }
-        assertEquals("AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP", loopMelding["forrigeTilstand"].asText());
-        assertEquals("AVVENTER_INNTEKTSMELDING_UFERDIG_GAP", loopMelding["gjeldendeTilstand"].asText());
-        assertEquals(vedtaksperiodeId.toString(), loopMelding["vedtaksperiodeId"].asText());
-        assertEquals("vedtaksperiode_i_loop", loopMelding["@event_name"].asText());
+        assertEquals("AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP", loopMelding["forrigeTilstand"].asText())
+        assertEquals("AVVENTER_INNTEKTSMELDING_UFERDIG_GAP", loopMelding["gjeldendeTilstand"].asText())
+        assertEquals(vedtaksperiodeId.toString(), loopMelding["vedtaksperiodeId"].asText())
+        assertEquals("vedtaksperiode_i_loop", loopMelding["@event_name"].asText())
     }
 
     @Test
     fun `revurdering og overstyring nullstiller loop-telleren`() {
         val vedtaksperiodeId = UUID.randomUUID()
-        fun sendTilstandsendringer(startsted: String, vararg tilstander: String) {
+
+        fun sendTilstandsendringer(
+            startsted: String,
+            vararg tilstander: String,
+        ) {
             tilstander.forEachIndexed { index, tilstand ->
                 if (index == 0) {
                     rapid.sendTestMessage(
                         vedtaksperiodeEndret(
                             vedtaksperiodeId = vedtaksperiodeId,
                             forrigeTilstand = startsted,
-                            gjeldendeTilstand = tilstand
-                        )
+                            gjeldendeTilstand = tilstand,
+                        ),
                     )
                 } else if (index != tilstander.size - 1) {
                     rapid.sendTestMessage(
                         vedtaksperiodeEndret(
                             vedtaksperiodeId = vedtaksperiodeId,
                             forrigeTilstand = tilstand,
-                            gjeldendeTilstand = tilstander[index+1]
-                        )
+                            gjeldendeTilstand = tilstander[index + 1],
+                        ),
                     )
                 }
             }
@@ -119,29 +125,24 @@ class TilstandsendringMonitorTest {
 
         sendTilstandsendringer(
             "Avsluttet",
-
             "AVVENTER_ARBEIDSGIVERE_REVURDERING",
             "AVVENTER_HISTORIKK_REVURDERING",
             "AVVENTER_GJENNOMFØRT_REVURDERING",
-
             "AVVENTER_ARBEIDSGIVERE_REVURDERING",
             "AVVENTER_HISTORIKK_REVURDERING",
             "AVVENTER_GJENNOMFØRT_REVURDERING",
-
             "AVVENTER_ARBEIDSGIVERE_REVURDERING",
             "AVVENTER_HISTORIKK_REVURDERING",
             "AVVENTER_GJENNOMFØRT_REVURDERING",
-
             "AVVENTER_ARBEIDSGIVERE_REVURDERING",
             "AVVENTER_HISTORIKK_REVURDERING",
             "AVVENTER_GJENNOMFØRT_REVURDERING",
         )
 
-        assertEquals(0, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size);
+        assertEquals(0, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size)
     }
 
     private fun meldinger() = (0 until rapid.inspektør.size).map { rapid.inspektør.message(it) }
-
 
     @Language("JSON")
     private fun vedtaksperiodeEndret(
@@ -172,7 +173,8 @@ class TilstandsendringMonitorTest {
 """
 
     @Language("JSON")
-    private fun avstemmingmelding() = """
+    private fun avstemmingmelding() =
+        """
 {
   "@event_name": "person_avstemt",
   "@id": "${UUID.randomUUID()}",

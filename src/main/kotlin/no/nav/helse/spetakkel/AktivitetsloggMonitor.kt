@@ -12,35 +12,41 @@ import no.nav.helse.spetakkel.AktivitetsloggMonitor.Nivå.FUNKSJONELL_FEIL
 import no.nav.helse.spetakkel.AktivitetsloggMonitor.Nivå.VARSEL
 import org.slf4j.LoggerFactory
 
-internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
-
+internal class AktivitetsloggMonitor(
+    rapidsConnection: RapidsConnection,
+) : River.PacketListener {
     private companion object {
         private val log = LoggerFactory.getLogger(AktivitetsloggMonitor::class.java)
     }
 
     init {
-        River(rapidsConnection).apply {
-            validate {
-                it.requireValue("@event_name", "aktivitetslogg_ny_aktivitet")
-                it.requireArray("aktiviteter") {
-                    requireKey("nivå", "melding")
+        River(rapidsConnection)
+            .apply {
+                validate {
+                    it.requireValue("@event_name", "aktivitetslogg_ny_aktivitet")
+                    it.requireArray("aktiviteter") {
+                        requireKey("nivå", "melding")
+                    }
                 }
-            }
-        }.register(this)
+            }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+    override fun onPacket(
+        packet: JsonMessage,
+        context: MessageContext,
+        metadata: MessageMetadata,
+        meterRegistry: MeterRegistry,
+    ) {
         packet["aktiviteter"]
             .takeIf(JsonNode::isArray)
             ?.filter {
                 it.path("nivå").asText() in Nivå.values().map(Enum<*>::name)
-            }
-            ?.map {
+            }?.map {
                 Nivå.valueOf(it.path("nivå").asText()) to it
-            }
-            ?.filter { (nivå, _) -> nivå in listOf(VARSEL, FUNKSJONELL_FEIL) }
+            }?.filter { (nivå, _) -> nivå in listOf(VARSEL, FUNKSJONELL_FEIL) }
             ?.onEach { (nivå, aktivitet) ->
-                Counter.builder("aktivitet_totals")
+                Counter
+                    .builder("aktivitet_totals")
                     .description("Antall aktiviteter")
                     .tag("alvorlighetsgrad", nivå.name)
                     .tag("melding", aktivitet.path("melding").asText())
@@ -54,6 +60,6 @@ internal class AktivitetsloggMonitor(rapidsConnection: RapidsConnection) : River
         BEHOV,
         VARSEL,
         FUNKSJONELL_FEIL,
-        LOGISK_FEIL;
+        LOGISK_FEIL,
     }
 }

@@ -9,22 +9,26 @@ fun main() {
 
     val dataSource = dataSourceBuilder.getDataSource()
 
-    RapidApplication.create(env).apply {
-        EventMonitor(this)
-        AktivitetsloggMonitor(this)
-        RevurderingIgangsattMonitor(this)
-        TelleverkRiver(this, OppfriskTilstandstellingDao(dataSource))
-        TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
-        VedtaksperiodePåminnetMonitor(this)
-        BehovMonitor(this)
-        GodkjenningsbehovMonitor(this, dataSource)
-        MedlemskapMonitor(this)
-        BehovUtenLøsningMonitor(this)
-    }.apply {
-        register(object : RapidsConnection.StatusListener {
-            override fun onStartup(rapidsConnection: RapidsConnection) {
-                dataSourceBuilder.migrate()
-            }
-        })
-    }.start()
+    RapidApplication
+        .create(env)
+        .apply {
+            EventMonitor(this)
+            AktivitetsloggMonitor(this)
+            RevurderingIgangsattMonitor(this)
+            TelleverkRiver(this, OppfriskTilstandstellingDao(dataSource))
+            TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
+            VedtaksperiodePåminnetMonitor(this)
+            BehovMonitor(this)
+            GodkjenningsbehovMonitor(this, dataSource)
+            MedlemskapMonitor(this)
+            BehovUtenLøsningMonitor(this)
+        }.apply {
+            register(
+                object : RapidsConnection.StatusListener {
+                    override fun onStartup(rapidsConnection: RapidsConnection) {
+                        dataSourceBuilder.migrate()
+                    }
+                },
+            )
+        }.start()
 }

@@ -11,34 +11,44 @@ import io.micrometer.core.instrument.MeterRegistry
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
 
-internal class BehovMonitor(rapidsConnection: RapidsConnection) : River.PacketListener {
-
+internal class BehovMonitor(
+    rapidsConnection: RapidsConnection,
+) : River.PacketListener {
     private companion object {
         private val log = LoggerFactory.getLogger(BehovMonitor::class.java)
     }
 
     init {
-        River(rapidsConnection).apply {
-            precondition {
-                it.requireValue("@event_name", "behov")
-                it.forbid("@løsning")
-            }
-            validate { it.requireKey("@behov"); it.interestedIn("vedtaksperiodeId") }
-        }.register(this)
+        River(rapidsConnection)
+            .apply {
+                precondition {
+                    it.requireValue("@event_name", "behov")
+                    it.forbid("@løsning")
+                }
+                validate {
+                    it.requireKey("@behov")
+                    it.interestedIn("vedtaksperiodeId")
+                }
+            }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+    override fun onPacket(
+        packet: JsonMessage,
+        context: MessageContext,
+        metadata: MessageMetadata,
+        meterRegistry: MeterRegistry,
+    ) {
         packet["@behov"]
             .takeIf(JsonNode::isArray)
             ?.map(JsonNode::asText)
             ?.onEach { behov ->
-                Counter.builder("behov_totals")
+                Counter
+                    .builder("behov_totals")
                     .description("Antall behov opprettet")
                     .tags("behovType", behov)
                     .register(meterRegistry)
                     .increment()
-            }
-            ?.also { behov ->
+            }?.also { behov ->
                 packet["vedtaksperiodeId"].takeIf(JsonNode::isTextual)?.asText()?.also {
                     log.info("{} har behov for {}", keyValue("vedtaksperiodeId", it), behov)
                 }
