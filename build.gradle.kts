@@ -14,8 +14,6 @@ dependencies {
     implementation(libs.postgresql)
     implementation(libs.kotliquery)
 
-    implementation(libs.rison)
-
     testImplementation(libs.tbdLibs.rapidsAndRiversTest)
     testImplementation(libs.tbdLibs.postgresTestdatabaser)
 }

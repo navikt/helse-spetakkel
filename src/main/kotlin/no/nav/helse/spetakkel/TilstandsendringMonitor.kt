@@ -1,6 +1,6 @@
 package no.nav.helse.spetakkel
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDateTime
@@ -108,8 +108,8 @@ class TilstandsendringMonitor(
                         .path("vedtaksperioder")
                         .filter { vedtaksperiode ->
                             vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(
-                                vedtaksperiode.path("id").asText(),
-                                vedtaksperiode.path("tilstand").asText(),
+                                vedtaksperiode.path("id").asString(),
+                                vedtaksperiode.path("tilstand").asString(),
                                 vedtaksperiode.path("oppdatert").asLocalDateTime(),
                             )
                         }.size +
@@ -117,15 +117,15 @@ class TilstandsendringMonitor(
                             .path("forkastedeVedtaksperioder")
                             .filter { vedtaksperiode ->
                                 vedtaksperiodeTilstandDao.lagreEllerOppdaterTilstand(
-                                    vedtaksperiode.path("id").asText(),
-                                    vedtaksperiode.path("tilstand").asText(),
+                                    vedtaksperiode.path("id").asString(),
+                                    vedtaksperiode.path("tilstand").asString(),
                                     vedtaksperiode.path("oppdatert").asLocalDateTime(),
                                 )
                             }.size
                 }
 
             if (antallEndringer == 0) return
-            sikkerLogg.info("Oppdaterte tilstand på $antallEndringer vedtaksperioder for person ${packet["fødselsnummer"].asText()}")
+            sikkerLogg.info("Oppdaterte tilstand på $antallEndringer vedtaksperioder for person ${packet["fødselsnummer"].asString()}")
         }
     }
 
@@ -267,8 +267,8 @@ class TilstandsendringMonitor(
                     )
                 }
             vedtaksperiodeTilstandDao.oppdaterTimeout(
-                vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
-                tilstand = packet["tilstand"].asText(),
+                vedtaksperiodeId = packet["vedtaksperiodeId"].asString(),
+                tilstand = packet["tilstand"].asString(),
                 timeout = timeout,
             )
         }
@@ -284,8 +284,8 @@ class TilstandsendringMonitor(
             meterRegistry: MeterRegistry,
         ) {
             vedtaksperiodeTilstandDao.oppdaterAntallPåminnelser(
-                vedtaksperiodeId = packet["vedtaksperiodeId"].asText(),
-                tilstand = packet["tilstand"].asText(),
+                vedtaksperiodeId = packet["vedtaksperiodeId"].asString(),
+                tilstand = packet["tilstand"].asString(),
                 antallPåminnelser = packet["antallGangerPåminnet"].asInt(),
             )
         }
@@ -511,11 +511,11 @@ class TilstandsendringMonitor(
         class Tilstandsendring(
             private val packet: JsonMessage,
         ) {
-            val fødselsnummer: String get() = packet["fødselsnummer"].asText()
-            val organisasjonsnummer: String get() = packet["organisasjonsnummer"].asText()
-            val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asText()
-            val forrigeTilstand: String get() = packet["forrigeTilstand"].asText()
-            val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asText()
+            val fødselsnummer: String get() = packet["fødselsnummer"].asString()
+            val organisasjonsnummer: String get() = packet["organisasjonsnummer"].asString()
+            val vedtaksperiodeId: String get() = packet["vedtaksperiodeId"].asString()
+            val forrigeTilstand: String get() = packet["forrigeTilstand"].asString()
+            val gjeldendeTilstand: String get() = packet["gjeldendeTilstand"].asString()
             val endringstidspunkt get() = packet["@opprettet"].asLocalDateTime()
             val makstid
                 get() =
@@ -523,7 +523,7 @@ class TilstandsendringMonitor(
                         .asLocalDateTime()
                         .takeUnless { it == LocalDateTime.MAX }
                         ?: LocalDateTime.of(LocalDate.ofYearDay(9999, 1), LocalTime.MIN)
-            val påGrunnAv get() = packet["@forårsaket_av.event_name"].asText()
+            val påGrunnAv get() = packet["@forårsaket_av.event_name"].asString()
             val antallHendelseWarnings = 0
             val harVedtaksperiodeWarnings
                 get() = packet["harVedtaksperiodeWarnings"].takeIf(JsonNode::isBoolean)?.booleanValue() ?: false

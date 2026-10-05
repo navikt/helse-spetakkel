@@ -26,7 +26,7 @@ class EventMonitor(
         Counter
             .builder("hendelser_totals")
             .description("Antall hendelser")
-            .tags("hendelse", packet["@event_name"].asText())
+            .tags("hendelse", packet["@event_name"].asString())
             .tag("topic", metadata.topic)
             .tag("partition", metadata.partition.toString())
             .register(meterRegistry)

@@ -77,14 +77,14 @@ internal class GodkjenningsbehovMonitor(
             Counter
                 .builder("godkjenningsbehovlosning_totals")
                 .description("Antall løste godkjenningsbehov")
-                .tag("periodetype", packet["Godkjenning.periodetype"].asText())
-                .tag("utbetalingtype", packet["Godkjenning.utbetalingtype"].asText())
-                .tag("inntektskilde", packet["Godkjenning.inntektskilde"].asText())
+                .tag("periodetype", packet["Godkjenning.periodetype"].asString())
+                .tag("utbetalingtype", packet["Godkjenning.utbetalingtype"].asString())
+                .tag("inntektskilde", packet["Godkjenning.inntektskilde"].asString())
                 .tag(
                     "harWarnings",
                     if (packet["Godkjenning.warnings"]
                             .path("aktiviteter")
-                            .any { it.path("alvorlighetsgrad").asText() == "WARN" }
+                            .any { it.path("alvorlighetsgrad").asString() == "WARN" }
                     ) {
                         "1"
                     } else {
@@ -92,7 +92,7 @@ internal class GodkjenningsbehovMonitor(
                     },
                 ).tag("godkjent", if (packet["@løsning.Godkjenning.godkjent"].asBoolean()) "1" else "0")
                 .tag("automatiskBehandling", if (packet["@løsning.Godkjenning.automatiskBehandling"].asBoolean()) "1" else "0")
-                .tag("forarsaketAvEventName", packet["@forårsaket_av.event_name"].asText())
+                .tag("forarsaketAvEventName", packet["@forårsaket_av.event_name"].asString())
                 .register(meterRegistry)
                 .increment()
         }
@@ -118,18 +118,18 @@ internal class GodkjenningsbehovMonitor(
             Counter
                 .builder("godkjenningsbehov_totals")
                 .description("Antall godkjenningsbehov")
-                .tag("periodetype", packet["Godkjenning.periodetype"].asText())
-                .tag("utbetalingtype", packet["Godkjenning.utbetalingtype"].asText())
-                .tag("inntektskilde", packet["Godkjenning.inntektskilde"].asText())
+                .tag("periodetype", packet["Godkjenning.periodetype"].asString())
+                .tag("utbetalingtype", packet["Godkjenning.utbetalingtype"].asString())
+                .tag("inntektskilde", packet["Godkjenning.inntektskilde"].asString())
                 .tag("harWarnings", "0")
-                .tag("forarsaketAvEventName", packet["@forårsaket_av.event_name"].asText())
+                .tag("forarsaketAvEventName", packet["@forårsaket_av.event_name"].asString())
                 .tag("resendingAvGodkjenningsbehov", if (erOpprinneligGodkjenningsbehov(packet)) "0" else "1")
                 .register(meterRegistry)
                 .increment()
         }
 
         private fun erOpprinneligGodkjenningsbehov(packet: JsonMessage): Boolean {
-            val vedtaksperiodeId = packet["vedtaksperiodeId"].asText().let(UUID::fromString)
+            val vedtaksperiodeId = packet["vedtaksperiodeId"].asString().let(UUID::fromString)
             return sessionOf(dataSource).use {
                 @Language("PostgreSQL")
                 val query = "INSERT INTO vedtaksperiode_godkjenningsbehov_duplikatsjekk (vedtaksperiode_id) VALUES (?) ON CONFLICT DO NOTHING;"
