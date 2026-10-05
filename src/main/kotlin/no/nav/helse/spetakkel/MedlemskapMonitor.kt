@@ -33,7 +33,7 @@ internal class MedlemskapMonitor(
         meterRegistry: MeterRegistry,
     ) {
         packet["@løsning.Medlemskap.resultat.svar"]
-            .asText()
+            .asString()
             .also {
                 Counter
                     .builder("medlemskapvurdering_totals")

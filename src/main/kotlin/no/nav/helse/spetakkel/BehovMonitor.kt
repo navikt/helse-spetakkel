@@ -1,6 +1,6 @@
 package no.nav.helse.spetakkel
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
@@ -40,7 +40,7 @@ internal class BehovMonitor(
     ) {
         packet["@behov"]
             .takeIf(JsonNode::isArray)
-            ?.map(JsonNode::asText)
+            ?.values()?.map(JsonNode::asString)
             ?.onEach { behov ->
                 Counter
                     .builder("behov_totals")
@@ -49,7 +49,7 @@ internal class BehovMonitor(
                     .register(meterRegistry)
                     .increment()
             }?.also { behov ->
-                packet["vedtaksperiodeId"].takeIf(JsonNode::isTextual)?.asText()?.also {
+                packet["vedtaksperiodeId"].takeIf(JsonNode::isString)?.asString()?.also {
                     log.info("{} har behov for {}", keyValue("vedtaksperiodeId", it), behov)
                 }
             }

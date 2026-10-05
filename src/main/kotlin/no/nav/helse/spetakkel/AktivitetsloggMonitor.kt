@@ -1,6 +1,6 @@
 package no.nav.helse.spetakkel
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
@@ -40,16 +40,16 @@ internal class AktivitetsloggMonitor(
         packet["aktiviteter"]
             .takeIf(JsonNode::isArray)
             ?.filter {
-                it.path("nivå").asText() in Nivå.values().map(Enum<*>::name)
+                it.path("nivå").asString() in Nivå.values().map(Enum<*>::name)
             }?.map {
-                Nivå.valueOf(it.path("nivå").asText()) to it
+                Nivå.valueOf(it.path("nivå").asString()) to it
             }?.filter { (nivå, _) -> nivå in listOf(VARSEL, FUNKSJONELL_FEIL) }
             ?.onEach { (nivå, aktivitet) ->
                 Counter
                     .builder("aktivitet_totals")
                     .description("Antall aktiviteter")
                     .tag("alvorlighetsgrad", nivå.name)
-                    .tag("melding", aktivitet.path("melding").asText())
+                    .tag("melding", aktivitet.path("melding").asString())
                     .register(meterRegistry)
                     .increment()
             }
