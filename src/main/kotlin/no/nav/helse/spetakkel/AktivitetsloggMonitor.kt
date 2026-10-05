@@ -1,6 +1,5 @@
 package no.nav.helse.spetakkel
 
-import tools.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
@@ -11,6 +10,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import no.nav.helse.spetakkel.AktivitetsloggMonitor.Nivå.FUNKSJONELL_FEIL
 import no.nav.helse.spetakkel.AktivitetsloggMonitor.Nivå.VARSEL
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.JsonNode
 
 internal class AktivitetsloggMonitor(
     rapidsConnection: RapidsConnection,
