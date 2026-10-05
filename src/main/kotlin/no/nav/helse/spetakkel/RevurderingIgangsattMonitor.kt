@@ -32,7 +32,7 @@ internal class RevurderingIgangsattMonitor(
         Counter
             .builder("revurdering_igangsatt")
             .description("Antall revurderinger igangsatt")
-            .tag("hvorfor", packet["årsak"].asText())
+            .tag("hvorfor", packet["årsak"].asString())
             .register(meterRegistry)
             .increment()
     }

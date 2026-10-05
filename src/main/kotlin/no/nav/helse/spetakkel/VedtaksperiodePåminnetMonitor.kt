@@ -28,7 +28,7 @@ internal class VedtaksperiodePåminnetMonitor(
         Counter
             .builder("vedtaksperiode_paminnet_totals")
             .description("Antall ganger en vedtaksperiode er blitt påminnet")
-            .tags("tilstand", packet["tilstand"].asText())
+            .tags("tilstand", packet["tilstand"].asString())
             .register(meterRegistry)
             .increment()
     }

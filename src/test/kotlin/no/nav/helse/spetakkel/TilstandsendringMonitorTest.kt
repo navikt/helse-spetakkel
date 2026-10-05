@@ -63,7 +63,7 @@ class TilstandsendringMonitorTest {
             )
         }
 
-        assertFalse(meldinger().any { it["@event_name"].asText() == "vedtaksperiode_i_loop" })
+        assertFalse(meldinger().any { it["@event_name"].asString() == "vedtaksperiode_i_loop" })
     }
 
     @Test
@@ -86,12 +86,12 @@ class TilstandsendringMonitorTest {
             )
         }
 
-        assertEquals(2, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size)
-        val loopMelding = meldinger().first { it["@event_name"].asText() == "vedtaksperiode_i_loop" }
-        assertEquals("AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP", loopMelding["forrigeTilstand"].asText())
-        assertEquals("AVVENTER_INNTEKTSMELDING_UFERDIG_GAP", loopMelding["gjeldendeTilstand"].asText())
-        assertEquals(vedtaksperiodeId.toString(), loopMelding["vedtaksperiodeId"].asText())
-        assertEquals("vedtaksperiode_i_loop", loopMelding["@event_name"].asText())
+        assertEquals(2, meldinger().filter { it["@event_name"].asString() == "vedtaksperiode_i_loop" }.size)
+        val loopMelding = meldinger().first { it["@event_name"].asString() == "vedtaksperiode_i_loop" }
+        assertEquals("AVVENTER_INNTEKTSMELDING_ELLER_HISTORIKK_FERDIG_GAP", loopMelding["forrigeTilstand"].asString())
+        assertEquals("AVVENTER_INNTEKTSMELDING_UFERDIG_GAP", loopMelding["gjeldendeTilstand"].asString())
+        assertEquals(vedtaksperiodeId.toString(), loopMelding["vedtaksperiodeId"].asString())
+        assertEquals("vedtaksperiode_i_loop", loopMelding["@event_name"].asString())
     }
 
     @Test
@@ -139,7 +139,7 @@ class TilstandsendringMonitorTest {
             "AVVENTER_GJENNOMFØRT_REVURDERING",
         )
 
-        assertEquals(0, meldinger().filter { it["@event_name"].asText() == "vedtaksperiode_i_loop" }.size)
+        assertEquals(0, meldinger().filter { it["@event_name"].asString() == "vedtaksperiode_i_loop" }.size)
     }
 
     private fun meldinger() = (0 until rapid.inspektør.size).map { rapid.inspektør.message(it) }
