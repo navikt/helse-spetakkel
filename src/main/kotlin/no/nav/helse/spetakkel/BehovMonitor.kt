@@ -1,6 +1,5 @@
 package no.nav.helse.spetakkel
 
-import tools.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
@@ -10,6 +9,7 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.JsonNode
 
 internal class BehovMonitor(
     rapidsConnection: RapidsConnection,
@@ -40,7 +40,8 @@ internal class BehovMonitor(
     ) {
         packet["@behov"]
             .takeIf(JsonNode::isArray)
-            ?.values()?.map(JsonNode::asString)
+            ?.values()
+            ?.map(JsonNode::asString)
             ?.onEach { behov ->
                 Counter
                     .builder("behov_totals")

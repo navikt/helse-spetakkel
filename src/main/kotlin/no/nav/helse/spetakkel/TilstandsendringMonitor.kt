@@ -1,6 +1,5 @@
 package no.nav.helse.spetakkel
 
-import tools.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDateTime
@@ -17,6 +16,7 @@ import kotliquery.*
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.JsonNode
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
