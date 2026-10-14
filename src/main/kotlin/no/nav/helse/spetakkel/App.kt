@@ -14,7 +14,6 @@ fun main() {
         .apply {
             EventMonitor(this)
             AktivitetsloggMonitor(this)
-            RevurderingIgangsattMonitor(this)
             TelleverkRiver(this, OppfriskTilstandstellingDao(dataSource))
             TilstandsendringMonitor(this, TilstandsendringMonitor.VedtaksperiodeTilstandDao(dataSource))
             VedtaksperiodePåminnetMonitor(this)
