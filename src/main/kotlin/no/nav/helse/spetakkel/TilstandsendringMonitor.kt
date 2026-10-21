@@ -223,18 +223,14 @@ class TilstandsendringMonitor(
             val now = LocalDateTime.now()
             if (lastRefreshTime > now.minusMinutes(15)) return
             logg.info("Refreshing tilstand gauge")
-            val defaultMap = TilstandType.entries.associateWith { 0L }
-            val valuesFromDb =
-                vedtaksperiodeTilstandDao
-                    .hentGjeldendeTilstander()
-                    .mapKeys { (navn, _) -> TilstandType.valueOf(navn) }
-            refreshTilstandGauge(meterRegistry, defaultMap + valuesFromDb)
+            val valuesFromDb = vedtaksperiodeTilstandDao.hentGjeldendeTilstander()
+            refreshTilstandGauge(meterRegistry, valuesFromDb)
             lastRefreshTime = now
         }
 
         private fun refreshTilstandGauge(
             meterRegistry: MeterRegistry,
-            tilstander: Map<TilstandType, Long>,
+            tilstander: Map<String, Long>,
         ) {
             MultiGauge
                 .builder("vedtaksperiode_gjeldende_tilstander")
@@ -242,7 +238,7 @@ class TilstandsendringMonitor(
                 .register(meterRegistry)
                 .register(
                     tilstander.map { (tilstand, antall) ->
-                        MultiGauge.Row.of(Tags.of(Tag.of("tilstand", tilstand.name)), antall)
+                        MultiGauge.Row.of(Tags.of(Tag.of("tilstand", tilstand)), antall)
                     },
                 )
         }
@@ -529,64 +525,5 @@ class TilstandsendringMonitor(
                 get() = packet["harVedtaksperiodeWarnings"].takeIf(JsonNode::isBoolean)?.booleanValue() ?: false
             val harHendelseWarnings get() = antallHendelseWarnings > 0
         }
-    }
-
-    private enum class TilstandType {
-        START,
-
-        AVVENTER_INFOTRYGDHISTORIKK,
-        AVVENTER_INNTEKTSMELDING,
-        AVVENTER_AVSLUTTET_UTEN_UTBETALING,
-        AVVENTER_BLOKKERENDE_PERIODE,
-        AVVENTER_SØKNAD_FOR_OVERLAPPENDE_PERIODE,
-        AVVENTER_INNTEKTSOPPLYSNINGER_FOR_ANNEN_ARBEIDSGIVER,
-        AVVENTER_REFUSJONSOPPLYSNINGER_ANNEN_PERIODE,
-        AVVENTER_A_ORDNINGEN,
-        AVVENTER_VILKÅRSPRØVING,
-        AVVENTER_HISTORIKK,
-        AVVENTER_SIMULERING,
-        AVVENTER_GODKJENNING,
-
-        AVVENTER_REVURDERING,
-        AVVENTER_REVURDERING_TIL_UTBETALING,
-        AVVENTER_HISTORIKK_REVURDERING,
-        AVVENTER_VILKÅRSPRØVING_REVURDERING,
-        AVVENTER_GODKJENNING_REVURDERING,
-        AVVENTER_SIMULERING_REVURDERING,
-
-        AVVENTER_ANNULLERING,
-        AVVENTER_ANNULLERING_TIL_UTBETALING,
-
-        TIL_UTBETALING,
-        TIL_ANNULLERING,
-        TIL_INFOTRYGD,
-        AVSLUTTET,
-        AVSLUTTET_UTEN_UTBETALING,
-
-        FRILANS_START,
-        FRILANS_AVVENTER_INFOTRYGDHISTORIKK,
-        FRILANS_AVVENTER_BLOKKERENDE_PERIODE,
-
-        ARBEIDSLEDIG_START,
-        ARBEIDSLEDIG_AVVENTER_INFOTRYGDHISTORIKK,
-        ARBEIDSLEDIG_AVVENTER_BLOKKERENDE_PERIODE,
-
-        SELVSTENDIG_START,
-        SELVSTENDIG_AVVENTER_INFOTRYGDHISTORIKK,
-        SELVSTENDIG_AVVENTER_BLOKKERENDE_PERIODE,
-        SELVSTENDIG_AVVENTER_VILKÅRSPRØVING,
-        SELVSTENDIG_AVVENTER_HISTORIKK,
-        SELVSTENDIG_AVVENTER_SIMULERING,
-        SELVSTENDIG_AVVENTER_GODKJENNING,
-
-        SELVSTENDIG_AVVENTER_REVURDERING,
-        SELVSTENDIG_AVVENTER_HISTORIKK_REVURDERING,
-        SELVSTENDIG_AVVENTER_VILKÅRSPRØVING_REVURDERING,
-        SELVSTENDIG_AVVENTER_GODKJENNING_REVURDERING,
-        SELVSTENDIG_AVVENTER_SIMULERING_REVURDERING,
-        SELVSTENDIG_AVVENTER_REVURDERING_TIL_UTBETALING,
-
-        SELVSTENDIG_TIL_UTBETALING,
-        SELVSTENDIG_AVSLUTTET,
     }
 }
